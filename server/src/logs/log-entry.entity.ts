@@ -1,5 +1,5 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
-import type { LogLevel, LogSource } from "./log-parser";
+import type { CommandOutcome, LogLevel, LogSource } from "./log-parser";
 
 @Entity("log_entries")
 @Index(["source", "fileOffset"], { unique: true })
@@ -20,6 +20,12 @@ export class LogEntry {
 
   @Column({ type: "text" })
   message: string;
+
+  @Column({ type: "enum", enum: ["success", "failure", "cancelled"], nullable: true })
+  outcome: CommandOutcome | null;
+
+  @Column({ type: "int", nullable: true })
+  durationMs: number | null;
 
   @Index()
   @Column({ type: "datetime", precision: 3 })

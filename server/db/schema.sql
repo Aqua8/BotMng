@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS log_entries (
   level      ENUM('info','warn','error') NOT NULL COMMENT '로그 레벨',
   tag        VARCHAR(64)  NULL     COMMENT '메시지 앞의 [태그] 값, 예: daily, poll (태그가 없으면 NULL)',
   message    TEXT         NOT NULL COMMENT '로그 메시지 (스택트레이스처럼 이어지는 줄은 줄바꿈으로 합쳐 한 건)',
+  outcome    ENUM('success','failure','cancelled') NULL COMMENT 'Discord 명령 사용 결과: success=성공, failure=실패, cancelled=취소 ([command] 로그에만 값이 있고 나머지는 NULL)',
+  durationMs INT          NULL     COMMENT 'Discord 명령 처리 시간(ms, 확인 버튼 대기 시간 제외). [command] 로그에만 값이 있음',
   loggedAt   DATETIME(3)  NOT NULL COMMENT '로그 발생 시각, 한국 시간(KST) (타임스탬프가 없는 옛 로그는 파일 수정 시각)',
   fileOffset BIGINT       NOT NULL COMMENT '로그 파일 안에서 이 항목이 시작하는 바이트 위치 (같은 줄 중복 저장 방지용)',
   PRIMARY KEY (id),

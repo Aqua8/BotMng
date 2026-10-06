@@ -1,12 +1,13 @@
 import { Flex } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Level, LogEntry, LogFilter, Source, fetchLogs, fetchTags, formatStamp, streamLogs } from "./api";
-import { LevelBadge } from "./components/Badges";
+import { LevelBadge, OutcomeBadge } from "./components/Badges";
 import { Column, DataTable } from "./components/DataTable";
 import { DateTimeField, SearchField } from "./components/Fields";
 import { FilterSelect } from "./components/FilterSelect";
 import { LiveSwitch } from "./components/LiveSwitch";
 import { PageHead } from "./components/PageHead";
+import { formatDuration } from "./lib/format-duration";
 import { DEFAULT_SORT, nextSort, useTableQuery } from "./hooks/useTableQuery";
 
 const toIso = (local: string) => (local ? new Date(`${local}:00+09:00`).toISOString() : undefined); // 입력값은 KST로 해석
@@ -30,6 +31,8 @@ const columns: Column<LogEntry>[] = [
   { key: "level", header: "레벨", sortKey: "level", cell: (r) => <LevelBadge level={r.level} /> },
   { key: "source", header: "파일", sortKey: "source", className: "nowrap muted", cell: (r) => r.source },
   { key: "tag", header: "태그", sortKey: "tag", className: "nowrap", cell: (r) => (r.tag ? <span className="tag">[{r.tag}]</span> : <span className="muted">-</span>) },
+  { key: "outcome", header: "결과", sortKey: "outcome", cell: (r) => (r.outcome ? <OutcomeBadge outcome={r.outcome} /> : <span className="muted">-</span>) },
+  { key: "duration", header: "처리시간", sortKey: "durationMs", className: "nowrap", cell: (r) => (r.durationMs === null ? <span className="muted">-</span> : formatDuration(r.durationMs)) },
   { key: "msg", header: "메시지", cell: (r) => <pre className="msg">{bodyOf(r)}</pre> },
 ];
 
@@ -122,7 +125,7 @@ export function Logs() {
         rowClassName={(r) => [r.level === "error" ? "row-error" : "", fresh.has(r.id) ? "fresh" : ""].filter(Boolean).join(" ") || undefined}
         loading={tq.loading}
         emptyText="조건에 맞는 로그가 없습니다."
-        minWidth={760}
+        minWidth={900}
         sort={tq.sort ?? DEFAULT_SORT}
         onSort={(key) => tq.setSort(nextSort(tq.sort, key))}
         pagination={{ total: tq.total, page: tq.page, pageSize: tq.pageSize, onPage: tq.setPage, onPageSize: tq.setPageSize }}
