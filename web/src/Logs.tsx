@@ -8,6 +8,7 @@ import { DateTimeField, SearchField } from "./components/Fields";
 import { FilterSelect } from "./components/FilterSelect";
 import { LiveSwitch } from "./components/LiveSwitch";
 import { PageHead } from "./components/PageHead";
+import { QuickRange } from "./components/QuickRange";
 import { formatDuration } from "./lib/format-duration";
 import { DEFAULT_SORT, nextSort, useTableQuery } from "./hooks/useTableQuery";
 
@@ -117,6 +118,7 @@ export function Logs() {
       <Flex wrap="wrap" align="center" gap="4" mb="3">
         <DateTimeField label="시작(KST)" value={from} onChange={setFrom} />
         <DateTimeField label="종료(KST)" value={to} onChange={setTo} />
+        <QuickRange onPick={(r) => { setFrom(r.from); setTo(r.to); }} />
       </Flex>
 
       {tq.error && <p className="error-text">{tq.error}</p>}

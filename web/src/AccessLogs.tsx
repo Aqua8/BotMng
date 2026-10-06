@@ -2,12 +2,15 @@ import { Button, Flex } from "@radix-ui/themes";
 import { AccessLogEntry, AccessLogFilter, fetchAccessLogs, formatStamp, getSession } from "./api";
 import { ResultBadge } from "./components/Badges";
 import { Column, DataTable } from "./components/DataTable";
+import { DateTimeField } from "./components/Fields";
 import { FilterSelect } from "./components/FilterSelect";
+import { QuickRange } from "./components/QuickRange";
 import { PageHead } from "./components/PageHead";
 import { DEFAULT_SORT, nextSort, useTableQuery } from "./hooks/useTableQuery";
 import { useState } from "react";
 
 const METHOD: Record<string, string> = { password: "비밀번호", guest: "게스트 버튼", session: "저장된 로그인" };
+const toIso = (local: string) => (local ? new Date(`${local}:00+09:00`).toISOString() : undefined); // 입력값은 KST로 해석
 const DEVICE: Record<string, string> = { desktop: "PC", mobile: "모바일", tablet: "태블릿", tv: "TV", unknown: "알 수 없음" };
 
 /** 게스트에게는 IP와 계정이 가려져 있으므로 이 두 열은 정렬할 수 없다 (서버도 400으로 거부한다). */
@@ -26,13 +29,17 @@ const buildColumns = (isAdmin: boolean): Column<AccessLogEntry>[] => [
 export function AccessLogs() {
   const [success, setSuccess] = useState("");
   const [method, setMethod] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const isAdmin = getSession()?.role === "admin";
 
   const filter: AccessLogFilter = {
     success: success === "" ? undefined : success === "true",
     method: (method || undefined) as AccessLogFilter["method"],
+    from: toIso(from),
+    to: toIso(to),
   };
-  const tq = useTableQuery((query) => fetchAccessLogs(filter, query), `${success}|${method}`);
+  const tq = useTableQuery((query) => fetchAccessLogs(filter, query), `${success}|${method}|${from}|${to}`);
   const columns = buildColumns(isAdmin);
 
   return (
@@ -52,6 +59,11 @@ export function AccessLogs() {
         <Button variant="soft" color="gray" onClick={tq.reload} disabled={tq.loading}>
           새로고침
         </Button>
+      </Flex>
+      <Flex wrap="wrap" align="center" gap="4" mb="3">
+        <DateTimeField label="시작(KST)" value={from} onChange={setFrom} />
+        <DateTimeField label="종료(KST)" value={to} onChange={setTo} />
+        <QuickRange onPick={(r) => { setFrom(r.from); setTo(r.to); }} />
       </Flex>
 
       {tq.error && <p className="error-text">{tq.error}</p>}

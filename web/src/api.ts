@@ -48,6 +48,8 @@ export interface AccessLogEntry {
 export interface AccessLogFilter {
   success?: boolean;
   method?: "password" | "guest" | "session";
+  from?: string; // ISO, 이 시각 이후
+  to?: string; // ISO, 이 시각 이전
 }
 
 export type SortOrder = "asc" | "desc";
