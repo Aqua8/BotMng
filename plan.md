@@ -18,7 +18,7 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 ## 2. 가정 (틀리면 알려주세요)
 
 - BotMng은 봇과 같은 맥에서 돌며 로그 파일 경로를 `.env`로 읽는다.
-- 스키마는 TypeORM `synchronize`로 관리한다(개인용 소규모. 마이그레이션은 도입하지 않음).
+- 스키마는 `server/db/schema.sql`(`CREATE TABLE IF NOT EXISTS`)로 직접 관리하고 TypeORM `synchronize`는 끈다. 자동 변경으로 컬럼이 삭제·변경되어 데이터가 사라지는 일을 막기 위함. 마이그레이션 도구는 도입하지 않는다.
 - 게스트는 조회 API만 쓸 수 있고, 현재 API는 전부 조회용이라 별도 권한 분기는 만들지 않는다. 쓰기 API가 생기면 관리자 전용 가드를 추가한다.
 - 외부 노출(HTTPS, 터널/리버스 프록시)은 서비스 범위 밖. 앱은 JWT 인증과 비밀번호 해시까지만 책임진다.
 
@@ -29,6 +29,8 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 타임스탬프 없는 줄은 직전 항목의 연속 줄(스택트레이스)로 합친다. 단 `(node:` 로 시작하면 새 항목.
 
 ## 4. DB 스키마
+
+정의는 `server/db/schema.sql`이 기준이다 (아래는 요약).
 
 - `log_entries`: id, source(out/error), level, tag(nullable), message(text), loggedAt(datetime 3), fileOffset. `(source, fileOffset)` 유니크로 중복 수집 방지, `loggedAt`/`tag` 인덱스.
 - `log_offsets`: source(PK), offset. 재시작 시 이어서 읽는다. 파일이 줄어들면(로테이션) 0부터.
@@ -55,7 +57,7 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 
 ## 7. 사용자 작업 필요
 
-- MariaDB root 비밀번호로 DB/유저 생성: `server/db/init.sql` 실행 (2단계에서 안내)
+- MariaDB root 비밀번호로 DB/유저 생성 (README의 SQL 참고). 테이블은 `server/db/schema.sql` 실행
 - 외부 노출 방식 결정(터널/프록시) — 배포 단계에서 논의
 
 ## 8. 진행 현황
@@ -68,6 +70,7 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 - [x] 5. dashboard-stats (SQL 직접 집계와 일치 확인)
 - [x] 5-1. kst-storage (DB KST 저장, 통계 버킷 KST, 신규 수집 검증 완료)
 - [x] 6. web (헤드리스 Chrome으로 로그인/대시보드/필터/검색/실시간 ON·OFF/로그아웃 검증 완료)
+- [x] 8-2. db-schema (synchronize 끔, schema.sql로 직접 관리 — 운영 테이블과 동일함 검증, 인덱스 이름 정리)
 - [x] 8. hardening (로그인 IP당 분당 10회 제한, 127.0.0.1 바인딩 — 429/바인딩 검증 완료)
 - [x] 8-1. direct-https (선택적 TLS 서빙, CF 대역에서만 CF-Connecting-IP 신뢰 — 자체서명 인증서로 검증 완료. 실제 Origin 인증서는 사용자 발급 필요)
 - [x] 7. launchd 상시 구동 (크래시 후 자동 재시작, 수집 지속 검증 완료)

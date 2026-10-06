@@ -110,7 +110,13 @@ GRANT ALL PRIVILEGES ON botmng.* TO 'botmng'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-테이블은 서버 시작 시 TypeORM `synchronize`로 자동 생성됩니다 (소규모 개인용이라 마이그레이션은 쓰지 않음).
+그다음 테이블을 만듭니다. 서버는 테이블을 자동으로 만들거나 고치지 않으므로(TypeORM `synchronize` 끔) **스키마는 SQL 파일로 직접 관리**합니다. 여러 번 실행해도 안전합니다.
+
+```bash
+mariadb -ubotmng -p botmng < server/db/schema.sql
+```
+
+스키마를 바꿀 때는 `server/db/schema.sql`과 `server/src`의 엔티티를 함께 고치고 DB에도 직접 반영합니다.
 
 ### 2. 환경 변수
 

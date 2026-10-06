@@ -27,7 +27,7 @@ import { LogsModule } from "./logs/logs.module";
         database: c.getOrThrow("DB_NAME"),
         timezone: "+09:00", // DB에는 한국 시간(KST)으로 저장하고 읽는다
         entities: [LogEntry, LogOffset, User],
-        synchronize: true, // plan.md: 소규모 개인용이라 마이그레이션 대신 synchronize 사용
+        synchronize: false, // 스키마는 TypeORM이 아니라 server/db/schema.sql 로 직접 관리한다 (자동 변경으로 인한 데이터 손실 방지)
       }),
     }),
     LogsModule,
