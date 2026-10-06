@@ -14,7 +14,7 @@ describe("parseUserAgent", () => {
   it("윈도우 엣지", () => {
     const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0";
     const r = parseUserAgent(ua);
-    expect(r.os).toMatch(/^Windows/);
+    expect(r.os).toBe("Windows 10/11"); // Windows 10 과 11 은 User-Agent 로 구분되지 않는다
     expect(r.browser).toBe("Microsoft Edge 130");
     expect(r.device).toBe("desktop");
   });

@@ -32,6 +32,21 @@ export class AuthController {
     }
   }
 
+  /** 게스트 버튼. 누구나 읽기 전용 게스트로 들어올 수 있으며, 일반 로그인과 같은 횟수 제한과 접속 로그 기록이 적용된다. */
+  @UseGuards(LoginThrottlerGuard)
+  @Post("guest")
+  @HttpCode(200)
+  async guest(@Req() req: { ip?: string; headers: Record<string, string | string[] | undefined> }) {
+    try {
+      const result = await this.auth.loginAsGuest();
+      await this.accessLog.record(req, result.username, true, "guest");
+      return result;
+    } catch (err) {
+      await this.accessLog.record(req, "guest", false, "guest");
+      throw err;
+    }
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   me(@Req() req: { user: AuthUser }) {

@@ -94,6 +94,12 @@ export async function login(username: string, password: string): Promise<Session
   return res.json();
 }
 
+export async function loginAsGuest(): Promise<Session> {
+  const res = await fetch("/api/auth/guest", { method: "POST" });
+  if (!res.ok) throw new Error(res.status === 429 ? "시도가 너무 많습니다. 잠시 후 다시 시도해 주세요" : `게스트 로그인 실패 (${res.status})`);
+  return res.json();
+}
+
 const toQuery = (params: Record<string, string | number | boolean | undefined>) => {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") sp.set(k, String(v));

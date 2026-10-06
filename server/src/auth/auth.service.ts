@@ -35,6 +35,17 @@ export class AuthService implements OnApplicationBootstrap {
     if (!user || !(await compare(password, user.passwordHash))) {
       throw new UnauthorizedException("아이디 또는 비밀번호가 올바르지 않습니다");
     }
+    return this.issue(user);
+  }
+
+  /** 게스트 버튼용. 비밀번호 없이 읽기 전용 게스트 계정의 토큰을 발급한다. */
+  async loginAsGuest() {
+    const user = await this.users.findOneBy({ username: "guest", role: "guest" });
+    if (!user) throw new UnauthorizedException("게스트 계정을 사용할 수 없습니다");
+    return this.issue(user);
+  }
+
+  private async issue(user: User) {
     const accessToken = await this.jwt.signAsync({ sub: user.id, username: user.username, role: user.role });
     return { accessToken, username: user.username, role: user.role };
   }
