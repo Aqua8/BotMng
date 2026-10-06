@@ -179,6 +179,31 @@ export async function resumeSession(): Promise<void> {
   }
 }
 
+/**
+ * 현재 필터·정렬 기준으로 로그를 CSV 로 내려받는다 (관리자만, 서버가 403 으로도 막는다).
+ * 인증 헤더가 필요해서 링크 대신 fetch 로 받아 파일로 저장한다.
+ */
+export async function downloadLogsCsv(filter: LogFilter, sort?: { key: string; order: SortOrder }): Promise<{ filename: string; rows: number; truncated: boolean }> {
+  const res = await fetch(`/api/logs/export.csv${toQuery({ ...filter, sort: sort?.key, order: sort?.order })}`, { headers: authHeader() });
+  if (res.status === 401) {
+    onUnauthorized();
+    throw new Error("로그인이 필요합니다");
+  }
+  if (res.status === 403) throw new Error("관리자만 내보낼 수 있습니다");
+  if (!res.ok) throw new Error(`내보내기에 실패했습니다 (${res.status})`);
+
+  const filename = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "botmng-logs.csv";
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return { filename, rows: Number(res.headers.get("X-Row-Count")), truncated: res.headers.get("X-Truncated") === "true" };
+}
+
 const toQuery = (params: Record<string, string | number | boolean | undefined>) => {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") sp.set(k, String(v));
