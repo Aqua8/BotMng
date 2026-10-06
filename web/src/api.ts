@@ -48,6 +48,8 @@ export interface AccessLogEntry {
 export interface AccessLogFilter {
   success?: boolean;
   method?: "password" | "guest" | "session";
+  from?: string; // ISO, 이 시각 이후
+  to?: string; // ISO, 이 시각 이전
 }
 
 export type SortOrder = "asc" | "desc";
@@ -62,6 +64,54 @@ export interface Paged<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+export interface CommandStat {
+  command: string;
+  count: number;
+  success: number;
+  failure: number;
+  cancelled: number;
+  avgMs: number | null;
+  maxMs: number | null;
+}
+export interface CommandStats {
+  days: number;
+  total: number;
+  success: number;
+  failure: number;
+  cancelled: number;
+  avgMs: number | null;
+  byCommand: CommandStat[];
+}
+
+export interface SourceStatus {
+  source: "out" | "error";
+  fileSize: number | null;
+  offset: number;
+  lagBytes: number | null;
+  fileMissing: boolean;
+  lastPollAt: string | null;
+  lastReadAt: string | null; // 마지막으로 새 로그를 읽은 시각. 서버 시작 후 새 로그가 없으면 null
+  lastError: { kind: string; at: string } | null;
+}
+export interface Health {
+  checkedAt: string;
+  status: "ok" | "warn" | "error";
+  issues: string[];
+  server: { startedAt: string; uptimeSec: number };
+  db: { ok: true; latencyMs: number; logCount: number; accessLogCount: number; sizeBytes: number } | { ok: false; error: string };
+  collector: { sources: SourceStatus[] };
+}
+
+export interface AccessStats {
+  days: number;
+  total: number;
+  success: number;
+  failure: number;
+  uniqueVisitors: number;
+  byMethod: { password: number; guest: number; session: number };
+  byCountry: { country: string; count: number; failure: number }[];
 }
 
 export interface Session {
@@ -129,6 +179,31 @@ export async function resumeSession(): Promise<void> {
   }
 }
 
+/**
+ * 현재 필터·정렬 기준으로 로그를 CSV 로 내려받는다 (관리자만, 서버가 403 으로도 막는다).
+ * 인증 헤더가 필요해서 링크 대신 fetch 로 받아 파일로 저장한다.
+ */
+export async function downloadLogsCsv(filter: LogFilter, sort?: { key: string; order: SortOrder }): Promise<{ filename: string; rows: number; truncated: boolean }> {
+  const res = await fetch(`/api/logs/export.csv${toQuery({ ...filter, sort: sort?.key, order: sort?.order })}`, { headers: authHeader() });
+  if (res.status === 401) {
+    onUnauthorized();
+    throw new Error("로그인이 필요합니다");
+  }
+  if (res.status === 403) throw new Error("관리자만 내보낼 수 있습니다");
+  if (!res.ok) throw new Error(`내보내기에 실패했습니다 (${res.status})`);
+
+  const filename = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "botmng-logs.csv";
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return { filename, rows: Number(res.headers.get("X-Row-Count")), truncated: res.headers.get("X-Truncated") === "true" };
+}
+
 const toQuery = (params: Record<string, string | number | boolean | undefined>) => {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") sp.set(k, String(v));
@@ -140,6 +215,9 @@ export const fetchLogs = (filter: LogFilter, q: TableQuery) => get<Paged<LogEntr
 export const fetchAccessLogs = (filter: AccessLogFilter, q: TableQuery) => get<Paged<AccessLogEntry>>(`/access-logs${toQuery({ ...filter, ...q })}`);
 export const fetchTags = () => get<string[]>("/logs/tags");
 export const fetchStats = () => get<Stats>("/stats");
+export const fetchAccessStats = (days: number) => get<AccessStats>(`/stats/access?days=${days}`);
+export const fetchHealth = () => get<Health>("/health");
+export const fetchCommandStats = (days: number) => get<CommandStats>(`/stats/commands?days=${days}`);
 
 /** SSE는 EventSource가 Authorization 헤더를 못 보내므로 fetch 스트림으로 직접 파싱한다. 반환값은 중단 함수. */
 export function streamLogs(onLog: (e: LogEntry) => void, onState: (connected: boolean) => void): () => void {

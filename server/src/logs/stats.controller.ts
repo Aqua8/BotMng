@@ -1,7 +1,12 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { Type } from "class-transformer";
+import { IsIn, IsOptional } from "class-validator";
 import { Repository } from "typeorm";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AccessLog } from "../access-log/access-log.entity";
+import { aggregateAccessStats } from "../access-log/access-stats";
+import { aggregateCommandStats } from "./command-stats";
 import { LogEntry } from "./log-entry.entity";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -9,10 +14,17 @@ const DAY_MS = 24 * HOUR_MS;
 const KST_OFFSET_MS = 9 * HOUR_MS; // DB가 KST로 저장되므로 시간 버킷도 KST 기준
 const LEVELS = ["info", "warn", "error"] as const;
 
+class CommandStatsQuery {
+  @IsOptional() @Type(() => Number) @IsIn([1, 7, 30]) days: number = 7;
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller("stats")
 export class StatsController {
-  constructor(@InjectRepository(LogEntry) private readonly repo: Repository<LogEntry>) {}
+  constructor(
+    @InjectRepository(LogEntry) private readonly repo: Repository<LogEntry>,
+    @InjectRepository(AccessLog) private readonly accessRepo: Repository<AccessLog>,
+  ) {}
 
   @Get()
   async stats() {
@@ -58,6 +70,33 @@ export class StatsController {
       byTag: byTag.map((r) => ({ tag: r.tag, count: Number(r.count) })),
       hourly: this.fillHours(now, hourlyRows),
     };
+  }
+
+  /** Discord 명령 사용 통계. 입력 내용은 로그에 없으므로 게스트에게도 보여도 된다. */
+  @Get("commands")
+  async commands(@Query() query: CommandStatsQuery) {
+    const since = new Date(Date.now() - query.days * DAY_MS);
+    const rows = await this.repo
+      .createQueryBuilder("l")
+      .select(["l.message", "l.outcome", "l.durationMs"])
+      .where("l.tag = 'command' AND l.loggedAt >= :since", { since })
+      .getMany();
+    return { days: query.days, ...aggregateCommandStats(rows) };
+  }
+
+  /**
+   * 접속 요약 (접속 수, 성공/실패, 고유 접속자, 방식별, 국가별). IP 는 개수로만 세고 응답에는 넣지 않으므로 게스트에게도 보여도 된다.
+   * days 는 명령 통계와 같은 값(1/7/30)을 쓴다.
+   */
+  @Get("access")
+  async access(@Query() query: CommandStatsQuery) {
+    const since = new Date(Date.now() - query.days * DAY_MS);
+    const rows = await this.accessRepo
+      .createQueryBuilder("a")
+      .select(["a.success", "a.method", "a.ip", "a.country"])
+      .where("a.loggedAt >= :since", { since })
+      .getMany();
+    return { days: query.days, ...aggregateAccessStats(rows) };
   }
 
   private async countByLevel(since: Date) {

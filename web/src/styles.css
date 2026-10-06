@@ -166,3 +166,27 @@ h2 { font-size: 15px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   .seg, .tagrow .fill, .rt-TableRow.fresh > td { animation: none; }
 }
+.panel-gap { margin-top: 16px; }
+.cmd-summary { margin: 0 0 12px; color: var(--muted); }
+.cmd-summary strong { color: var(--text); font-weight: 600; }
+.cmd-failed { color: var(--err); font-weight: 600; }
+.rt-TableRow.clickable { cursor: pointer; }
+.rt-TableRow.clickable:hover > td { background: var(--accent-a3); }
+.rt-TableRow.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.detail { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px 16px; margin: 12px 0; font-size: 14px; }
+.detail dt { color: var(--muted); }
+.detail dd { margin: 0; word-break: break-all; }
+.detail-msg { margin: 0; padding: 12px; max-height: 45vh; overflow: auto; background: var(--surface-2); border-radius: 6px; font: 12.5px/1.6 var(--mono); white-space: pre-wrap; word-break: break-word; }
+.rt-TableColumnHeaderCell { white-space: nowrap; }
+.health-state { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+.health-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.health-grid h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13.5px; }
+.kv dt { color: var(--muted); white-space: nowrap; }
+.kv dd { margin: 0; word-break: break-word; }
+.health-issues { margin: 0 0 14px; padding: 10px 14px 10px 30px; border-radius: 6px; font-size: 13.5px; }
+.health-issues.warn { background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.health-issues.error { background: color-mix(in srgb, var(--err) 12%, transparent); }
+.health-foot { margin: 14px 0 0; font-size: 12px; }
+@media (max-width: 780px) { .health-grid { grid-template-columns: minmax(0, 1fr); } }
+.access-countries { margin-top: 12px; } .access-countries .tagrow { grid-template-columns: 110px minmax(0, 1fr) 90px; }

@@ -1,12 +1,15 @@
-import { Flex } from "@radix-ui/themes";
+import { DownloadIcon } from "@radix-ui/react-icons";
+import { Button, Flex } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Level, LogEntry, LogFilter, Source, fetchLogs, fetchTags, formatStamp, streamLogs } from "./api";
+import { Level, LogEntry, LogFilter, Source, downloadLogsCsv, fetchLogs, fetchTags, formatStamp, getSession, streamLogs } from "./api";
+import { LogDetailDialog } from "./LogDetailDialog";
 import { LevelBadge, OutcomeBadge } from "./components/Badges";
 import { Column, DataTable } from "./components/DataTable";
 import { DateTimeField, SearchField } from "./components/Fields";
 import { FilterSelect } from "./components/FilterSelect";
 import { LiveSwitch } from "./components/LiveSwitch";
 import { PageHead } from "./components/PageHead";
+import { QuickRange } from "./components/QuickRange";
 import { formatDuration } from "./lib/format-duration";
 import { DEFAULT_SORT, nextSort, useTableQuery } from "./hooks/useTableQuery";
 
@@ -48,6 +51,10 @@ export function Logs() {
   const [live, setLive] = useState(true);
   const [autoOff, setAutoOff] = useState(false); // 페이지·정렬을 바꿔서 실시간이 자동으로 꺼졌는지
   const [connected, setConnected] = useState(false);
+  const [selected, setSelected] = useState<LogEntry | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportNote, setExportNote] = useState<{ text: string; failed: boolean } | null>(null);
+  const isAdmin = getSession()?.role === "admin"; // CSV 내보내기는 관리자만 (서버도 403 으로 막는다)
 
   const filter: LogFilter = {
     source: (source || undefined) as Source | undefined,
@@ -63,6 +70,20 @@ export function Logs() {
   // 검색어는 입력이 멈춘 뒤(300ms) 조회한다. 필터가 바뀌면 1페이지로 돌아가고 새로 고친 줄 강조도 초기화한다.
   const tq = useTableQuery((query) => fetchLogs(filter, query), JSON.stringify(filter), { debounceMs: 300, onReset: () => setFresh(new Set()) });
   const { setRows, setTotal, pageSize, atHome } = tq;
+
+  // 현재 필터와 정렬을 그대로 적용해 내려받는다.
+  const exportCsv = async () => {
+    setExporting(true);
+    setExportNote(null);
+    try {
+      const r = await downloadLogsCsv(filter, tq.sort ?? undefined);
+      setExportNote({ text: r.truncated ? `${r.rows.toLocaleString("ko-KR")}건을 내보냈습니다 (최대 건수를 넘어 일부만 포함)` : `${r.rows.toLocaleString("ko-KR")}건을 내보냈습니다`, failed: false });
+    } catch (e) {
+      setExportNote({ text: (e as Error).message, failed: true });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     fetchTags().then(setTags).catch(() => {});
@@ -115,6 +136,15 @@ export function Logs() {
       <Flex wrap="wrap" align="center" gap="4" mb="3">
         <DateTimeField label="시작(KST)" value={from} onChange={setFrom} />
         <DateTimeField label="종료(KST)" value={to} onChange={setTo} />
+        <QuickRange onPick={(r) => { setFrom(r.from); setTo(r.to); }} />
+        {isAdmin && (
+          <Flex align="center" gap="3" ml="auto">
+            {exportNote && <span className={exportNote.failed ? "error-text" : "muted"}>{exportNote.text}</span>}
+            <Button variant="soft" onClick={exportCsv} disabled={exporting} title="지금 걸어 둔 필터와 정렬 그대로 CSV로 내려받습니다 (최대 50,000건)">
+              <DownloadIcon /> CSV 내보내기
+            </Button>
+          </Flex>
+        )}
       </Flex>
 
       {tq.error && <p className="error-text">{tq.error}</p>}
@@ -125,11 +155,13 @@ export function Logs() {
         rowClassName={(r) => [r.level === "error" ? "row-error" : "", fresh.has(r.id) ? "fresh" : ""].filter(Boolean).join(" ") || undefined}
         loading={tq.loading}
         emptyText="조건에 맞는 로그가 없습니다."
+        onRowClick={setSelected}
         minWidth={900}
         sort={tq.sort ?? DEFAULT_SORT}
         onSort={(key) => tq.setSort(nextSort(tq.sort, key))}
         pagination={{ total: tq.total, page: tq.page, pageSize: tq.pageSize, onPage: tq.setPage, onPageSize: tq.setPageSize }}
       />
+      <LogDetailDialog log={selected} onClose={() => setSelected(null)} />
     </>
   );
 }
