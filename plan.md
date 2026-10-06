@@ -190,7 +190,8 @@ cd server && npm start
 ### 진행 현황
 - [x] 12-1. redesign-console (좌측 사이드바 + 하루 시계 대시보드 + 로그 스트림, 다크/라이트·모바일 캡처 확인, 기능 회귀: 화면 15개 시나리오 + 동의 모달 21개 시나리오 통과)
   - 참고: 화면 상수 `Dashboard.tsx`의 `SCHEDULE`(06:00/21:00/일 20:00)은 봇 스케줄을 바꾸면 같이 바꿔야 한다. 글꼴 파일이 함께 빌드되어 `web/dist`가 약 8MB(557개)지만 브라우저는 쓰는 글자 구간만 내려받는다.
-- [ ] 12-2. radix-themes (Radix Themes 컨트롤 교체, 테마 토글(localStorage), 로그·접속 로그 테이블화)
+- [x] 12-2. radix-themes (Radix Themes 컨트롤 교체, 해/달 테마 토글(localStorage 저장), 로그·접속 로그 테이블화, 공통 컴포넌트 `components/`·`hooks/` 분리 — 화면 25개 + 동의 모달 21개 시나리오 통과, 토글 저장·새로고침 유지·시스템 설정 복귀 확인)
+  - 참고: 테마를 Radix Theme의 `appearance`로 관리하고, 직접 만든 색 토큰은 Radix 변수(`--gray-*`, `--accent-*`)에 연결해 한 번에 바뀐다. Dialog 제목은 접근성을 위해 `h2`로 렌더링(기본은 `h1`).
 
 ## 10. 나중에 할 일 (필요해질 때)
 

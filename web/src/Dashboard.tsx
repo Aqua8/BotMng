@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { LogEntry, Stats, fetchLogs, fetchStats, formatClock, formatDay } from "./api";
+import { LevelBadge } from "./components/Badges";
+import { PageHead } from "./components/PageHead";
+import { Panel } from "./components/Panel";
+import { LampStatus, StatusLamp } from "./components/StatusLamp";
 
 const REFRESH_MS = 10_000;
 
@@ -33,16 +37,16 @@ export function Dashboard() {
 
   const { info, warn, error: errors } = stats.last24h;
   const total = info + warn + errors;
-  const lamp = errors > 0 ? "err" : warn > 0 ? "warn" : "ok";
+  const lamp: LampStatus = errors > 0 ? "err" : warn > 0 ? "warn" : "ok";
   const maxTag = Math.max(1, ...stats.byTag.map((t) => t.count));
 
   return (
     <>
-      <div className="page-head">
-        <h1>대시보드</h1>
-        <p className="lede">
-          <span className={`lamp ${lamp}`} aria-hidden="true" />
-          <span>
+      <PageHead
+        title="대시보드"
+        lead={<StatusLamp status={lamp} />}
+        lede={
+          <>
             최근 24시간 로그 <strong>{total}건</strong>
             {errors > 0 ? (
               <>
@@ -52,37 +56,29 @@ export function Dashboard() {
               ", 에러 없음"
             )}
             {warn > 0 && <>, 경고 {warn}건</>}
-          </span>
-        </p>
+          </>
+        }
+      >
         <div className="facts">
           <span>
             마지막 로그 <b>{stats.lastLogAt ? formatClock(stats.lastLogAt) : "-"}</b>
           </span>
           <span>
-            마지막 봇 시작{" "}
-            <b>{stats.lastStartAt ? `${formatDay(stats.lastStartAt)} ${formatClock(stats.lastStartAt)}` : "-"}</b>
+            마지막 봇 시작 <b>{stats.lastStartAt ? `${formatDay(stats.lastStartAt)} ${formatClock(stats.lastStartAt)}` : "-"}</b>
           </span>
           <span>
             최근 7일 에러 <b>{stats.errors7d}건</b>
           </span>
         </div>
-      </div>
+      </PageHead>
       {error && <p className="error-text">{error}</p>}
 
-      <section className="panel" aria-labelledby="clock-title">
-        <div className="panel-head">
-          <h2 id="clock-title">하루 시계</h2>
-          <span className="muted">최근 24시간 · 한국 시간</span>
-        </div>
+      <Panel id="clock" title="하루 시계" aside="최근 24시간 · 한국 시간">
         <DayClock hourly={stats.hourly} />
-      </section>
+      </Panel>
 
       <div className="cols">
-        <section className="panel">
-          <div className="panel-head">
-            <h2>태그별 로그</h2>
-            <span className="muted">최근 24시간</span>
-          </div>
+        <Panel title="태그별 로그" aside="최근 24시간">
           {stats.byTag.length === 0 ? (
             <p className="empty">아직 로그가 없습니다.</p>
           ) : (
@@ -96,12 +92,9 @@ export function Dashboard() {
               </div>
             ))
           )}
-        </section>
+        </Panel>
 
-        <section className="panel">
-          <div className="panel-head">
-            <h2>최근 경고와 에러</h2>
-          </div>
+        <Panel title="최근 경고와 에러">
           {alerts.length === 0 ? (
             <p className="empty">경고나 에러가 없습니다.</p>
           ) : (
@@ -111,7 +104,7 @@ export function Dashboard() {
                   <span className="bar" />
                   <div>
                     <time dateTime={a.loggedAt}>
-                      {formatDay(a.loggedAt)} {formatClock(a.loggedAt)} · {a.level === "error" ? "에러" : "경고"}
+                      {formatDay(a.loggedAt)} {formatClock(a.loggedAt)} <LevelBadge level={a.level} />
                     </time>
                     <pre>{a.message}</pre>
                   </div>
@@ -119,7 +112,7 @@ export function Dashboard() {
               ))}
             </div>
           )}
-        </section>
+        </Panel>
       </div>
     </>
   );

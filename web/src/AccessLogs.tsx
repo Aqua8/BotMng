@@ -1,110 +1,68 @@
-import { useEffect, useState } from "react";
+import { Button, Flex } from "@radix-ui/themes";
 import { AccessLogEntry, AccessLogFilter, fetchAccessLogs, formatStamp, getSession } from "./api";
+import { ResultBadge } from "./components/Badges";
+import { Column, DataTable } from "./components/DataTable";
+import { FilterSelect } from "./components/FilterSelect";
+import { PageHead } from "./components/PageHead";
+import { usePagedList } from "./hooks/usePagedList";
+import { useState } from "react";
 
 const DEVICE: Record<string, string> = { desktop: "PC", mobile: "모바일", tablet: "태블릿", tv: "TV", unknown: "알 수 없음" };
+
+const columns: Column<AccessLogEntry>[] = [
+  { key: "time", header: "시각", className: "nowrap muted", cell: (r) => formatStamp(r.loggedAt) },
+  { key: "user", header: "계정", cell: (r) => r.username ?? <span className="muted">(가림)</span> },
+  { key: "result", header: "결과", cell: (r) => <ResultBadge success={r.success} /> },
+  { key: "method", header: "방식", className: "nowrap", cell: (r) => (r.method === "guest" ? "게스트 버튼" : "비밀번호") },
+  { key: "ip", header: "IP", className: "mono nowrap", cell: (r) => r.ip },
+  { key: "country", header: "국가", cell: (r) => r.country ?? "-" },
+  { key: "os", header: "OS", className: "nowrap", cell: (r) => r.os },
+  { key: "browser", header: "브라우저", className: "nowrap", cell: (r) => r.browser },
+  { key: "device", header: "기기", className: "nowrap", cell: (r) => DEVICE[r.device] ?? r.device },
+];
 
 export function AccessLogs() {
   const [success, setSuccess] = useState("");
   const [method, setMethod] = useState("");
-  const [rows, setRows] = useState<AccessLogEntry[]>([]);
-  const [cursor, setCursor] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const isAdmin = getSession()?.role === "admin";
 
   const filter: AccessLogFilter = {
     success: success === "" ? undefined : success === "true",
     method: (method || undefined) as AccessLogFilter["method"],
   };
-
-  const load = async (before?: number) => {
-    setLoading(true);
-    try {
-      const r = await fetchAccessLogs(filter, before);
-      setRows((prev) => (before ? [...prev, ...r.items] : r.items));
-      setCursor(r.nextCursor);
-      setError("");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, [success, method]); // eslint-disable-line react-hooks/exhaustive-deps
+  const list = usePagedList((before) => fetchAccessLogs(filter, before), [success, method]);
 
   return (
     <>
-      <div className="page-head">
-        <h1>접속 로그</h1>
-        <p className="lede">
-          {isAdmin
+      <PageHead
+        title="접속 로그"
+        lede={
+          isAdmin
             ? "로그인 시도(성공과 실패)를 최신순으로 보여줍니다. 관리자에게는 모든 정보가 표시됩니다."
-            : "로그인 시도(성공과 실패)를 최신순으로 보여줍니다. IP는 앞 두 칸만, 실패한 시도의 아이디는 가려서 표시됩니다."}
-        </p>
-      </div>
+            : "로그인 시도(성공과 실패)를 최신순으로 보여줍니다. IP는 앞 두 칸만, 실패한 시도의 아이디는 가려서 표시됩니다."
+        }
+      />
 
-      <div className="toolbar">
-        <select aria-label="결과" value={success} onChange={(e) => setSuccess(e.target.value)}>
-          <option value="">전체 결과</option>
-          <option value="true">성공</option>
-          <option value="false">실패</option>
-        </select>
-        <select aria-label="방식" value={method} onChange={(e) => setMethod(e.target.value)}>
-          <option value="">전체 방식</option>
-          <option value="password">아이디/비밀번호</option>
-          <option value="guest">게스트 버튼</option>
-        </select>
-        <button onClick={() => void load()} disabled={loading}>
+      <Flex wrap="wrap" align="center" gap="2" mb="3">
+        <FilterSelect label="결과" allLabel="전체 결과" value={success} onChange={setSuccess} options={[{ value: "true", label: "성공" }, { value: "false", label: "실패" }]} />
+        <FilterSelect label="방식" allLabel="전체 방식" value={method} onChange={setMethod} options={[{ value: "password", label: "아이디/비밀번호" }, { value: "guest", label: "게스트 버튼" }]} />
+        <Button variant="soft" color="gray" onClick={list.reload} disabled={list.loading}>
           새로고침
-        </button>
-      </div>
+        </Button>
+      </Flex>
 
-      {error && <p className="error-text">{error}</p>}
-
-      <div className="table-wrap">
-        <table className="access">
-          <thead>
-            <tr>
-              <th>시각</th>
-              <th>계정</th>
-              <th>결과</th>
-              <th>방식</th>
-              <th>IP</th>
-              <th>국가</th>
-              <th>OS</th>
-              <th>브라우저</th>
-              <th>기기</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} title={r.userAgent ?? undefined}>
-                <td className="time">{formatStamp(r.loggedAt)}</td>
-                <td>{r.username ?? <span className="muted">(가림)</span>}</td>
-                <td>
-                  <span className="result">
-                    <span className={`lamp ${r.success ? "ok" : "err"}`} aria-hidden="true" />
-                    {r.success ? "성공" : "실패"}
-                  </span>
-                </td>
-                <td>{r.method === "guest" ? "게스트 버튼" : "비밀번호"}</td>
-                <td className="mono">{r.ip}</td>
-                <td>{r.country ?? "-"}</td>
-                <td>{r.os}</td>
-                <td>{r.browser}</td>
-                <td>{DEVICE[r.device] ?? r.device}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {rows.length === 0 && !loading && <p className="empty" style={{ padding: "14px 16px" }}>접속 기록이 없습니다.</p>}
-        {(cursor !== null || loading) && (
-          <div className="stream-foot">{loading ? <span className="muted">불러오는 중...</span> : <button onClick={() => void load(cursor!)}>더 보기</button>}</div>
-        )}
-      </div>
+      {list.error && <p className="error-text">{list.error}</p>}
+      <DataTable
+        columns={columns}
+        rows={list.rows}
+        rowKey={(r) => r.id}
+        rowTitle={(r) => r.userAgent ?? undefined}
+        loading={list.loading}
+        hasMore={list.hasMore}
+        onLoadMore={list.loadMore}
+        emptyText="접속 기록이 없습니다."
+        minWidth={820}
+      />
     </>
   );
 }

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Button } from "@radix-ui/themes";
 import { ConsentModal } from "./ConsentModal";
+import { ThemeToggle } from "./theme";
 import { clearConsent, hasConsent, saveConsent } from "./consent";
 import { Session, clearSession, getSession, setUnauthorizedHandler } from "./api";
 import { AccessLogs } from "./AccessLogs";
@@ -79,7 +81,12 @@ export function App() {
               <span>{session.username}</span>
               <small>{session.role === "admin" ? "관리자" : "게스트 (읽기 전용)"}</small>
             </div>
-            <button onClick={logout}>로그아웃</button>
+            <div className="side-actions">
+              <ThemeToggle />
+              <Button variant="soft" color="gray" onClick={logout}>
+                로그아웃
+              </Button>
+            </div>
           </div>
         </aside>
         <main className="content">{tab === "dashboard" ? <Dashboard /> : tab === "logs" ? <Logs /> : <AccessLogs />}</main>
