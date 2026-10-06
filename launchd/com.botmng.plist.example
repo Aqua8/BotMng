@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 템플릿: __NODE_BIN_DIR__, __PROJECT_DIR__ 를 실제 값으로 바꿔 ~/Library/LaunchAgents/com.botmng.plist 로 설치한다 (README 참고). 실제 값이 든 파일은 Git에 올리지 않는다. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.botmng</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__NODE_BIN_DIR__/node</string>
+        <string>__PROJECT_DIR__/server/dist/main.js</string>
+    </array>
+
+    <!-- .env 는 작업 디렉터리 기준으로 읽는다 -->
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_DIR__/server</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <!-- DB가 아직 안 떠서 죽는 경우 등에 너무 빠르게 재시작을 반복하지 않도록 -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>__PROJECT_DIR__/server/logs/out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_DIR__/server/logs/error.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__NODE_BIN_DIR__:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

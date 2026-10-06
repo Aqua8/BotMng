@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.DS_Store
+server/db/init.sql
+server/logs
+server/certs
+launchd/*.plist
