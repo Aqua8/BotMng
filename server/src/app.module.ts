@@ -8,6 +8,7 @@ import { AccessLog } from "./access-log/access-log.entity";
 import { AccessLogModule } from "./access-log/access-log.module";
 import { AuthModule } from "./auth/auth.module";
 import { User } from "./auth/user.entity";
+import { HealthModule } from "./health/health.module";
 import { LogEntry } from "./logs/log-entry.entity";
 import { LogOffset } from "./logs/log-offset.entity";
 import { LogsModule } from "./logs/logs.module";
@@ -35,6 +36,7 @@ import { LogsModule } from "./logs/logs.module";
     LogsModule,
     AuthModule,
     AccessLogModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

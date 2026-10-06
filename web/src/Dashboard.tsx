@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LogEntry, Stats, fetchLogs, fetchStats, formatClock, formatDay } from "./api";
 import { CommandStatsPanel } from "./CommandStatsPanel";
+import { HealthPanel } from "./HealthPanel";
 import { LevelBadge } from "./components/Badges";
 import { PageHead } from "./components/PageHead";
 import { Panel } from "./components/Panel";
@@ -74,9 +75,13 @@ export function Dashboard() {
       </PageHead>
       {error && <p className="error-text">{error}</p>}
 
-      <Panel id="clock" title="하루 시계" aside="최근 24시간 · 한국 시간">
-        <DayClock hourly={stats.hourly} />
-      </Panel>
+      <HealthPanel />
+
+      <div className="panel-gap">
+        <Panel id="clock" title="하루 시계" aside="최근 24시간 · 한국 시간">
+          <DayClock hourly={stats.hourly} />
+        </Panel>
+      </div>
 
       <div className="cols">
         <Panel title="태그별 로그" aside="최근 24시간">

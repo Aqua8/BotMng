@@ -85,6 +85,25 @@ export interface CommandStats {
   byCommand: CommandStat[];
 }
 
+export interface SourceStatus {
+  source: "out" | "error";
+  fileSize: number | null;
+  offset: number;
+  lagBytes: number | null;
+  fileMissing: boolean;
+  lastPollAt: string | null;
+  lastReadAt: string | null; // 마지막으로 새 로그를 읽은 시각. 서버 시작 후 새 로그가 없으면 null
+  lastError: { kind: string; at: string } | null;
+}
+export interface Health {
+  checkedAt: string;
+  status: "ok" | "warn" | "error";
+  issues: string[];
+  server: { startedAt: string; uptimeSec: number };
+  db: { ok: true; latencyMs: number; logCount: number; accessLogCount: number; sizeBytes: number } | { ok: false; error: string };
+  collector: { sources: SourceStatus[] };
+}
+
 export interface Session {
   accessToken: string;
   username: string;
@@ -161,6 +180,7 @@ export const fetchLogs = (filter: LogFilter, q: TableQuery) => get<Paged<LogEntr
 export const fetchAccessLogs = (filter: AccessLogFilter, q: TableQuery) => get<Paged<AccessLogEntry>>(`/access-logs${toQuery({ ...filter, ...q })}`);
 export const fetchTags = () => get<string[]>("/logs/tags");
 export const fetchStats = () => get<Stats>("/stats");
+export const fetchHealth = () => get<Health>("/health");
 export const fetchCommandStats = (days: number) => get<CommandStats>(`/stats/commands?days=${days}`);
 
 /** SSE는 EventSource가 Authorization 헤더를 못 보내므로 fetch 스트림으로 직접 파싱한다. 반환값은 중단 함수. */
