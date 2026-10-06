@@ -29,6 +29,25 @@ export interface Stats {
   hourly: { hour: string; info: number; warn: number; error: number }[];
 }
 
+export interface AccessLogEntry {
+  id: number;
+  loggedAt: string;
+  username: string | null; // 게스트에게는 실패한 시도의 아이디가 null
+  success: boolean;
+  method: "password" | "guest";
+  ip: string; // 게스트에게는 마지막 부분이 마스킹됨
+  country: string | null;
+  os: string;
+  browser: string;
+  device: string;
+  userAgent: string | null; // 관리자에게만 내려옴
+}
+
+export interface AccessLogFilter {
+  success?: boolean;
+  method?: "password" | "guest";
+}
+
 export interface Session {
   accessToken: string;
   username: string;
@@ -75,7 +94,7 @@ export async function login(username: string, password: string): Promise<Session
   return res.json();
 }
 
-const toQuery = (params: Record<string, string | number | undefined>) => {
+const toQuery = (params: Record<string, string | number | boolean | undefined>) => {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") sp.set(k, String(v));
   const s = sp.toString();
@@ -84,6 +103,8 @@ const toQuery = (params: Record<string, string | number | undefined>) => {
 
 export const fetchLogs = (filter: LogFilter, beforeId?: number) =>
   get<{ items: LogEntry[]; nextCursor: number | null }>(`/logs${toQuery({ ...filter, beforeId, limit: 100 })}`);
+export const fetchAccessLogs = (filter: AccessLogFilter, beforeId?: number) =>
+  get<{ items: AccessLogEntry[]; nextCursor: number | null }>(`/access-logs${toQuery({ ...filter, beforeId, limit: 50 })}`);
 export const fetchTags = () => get<string[]>("/logs/tags");
 export const fetchStats = () => get<Stats>("/stats");
 

@@ -48,3 +48,11 @@ td { padding: 4px 0; border-bottom: 1px solid var(--border); } td.num { text-ali
 .badge { font-size: 11px; text-align: center; border-radius: 4px; padding: 1px 0; color: #fff; }
 .badge.info { background: var(--info); } .badge.warn { background: var(--warn); } .badge.error { background: var(--error); }
 @media (max-width: 640px) { .row { grid-template-columns: 1fr auto auto; } .row pre { grid-column: 1 / -1; } }
+.table-wrap { padding: 0; overflow-x: auto; }
+.table-wrap > button { margin: 12px; }
+.table-wrap > p { padding: 12px 16px; margin: 0; }
+table.access { min-width: 760px; }
+table.access th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+table.access td { padding: 6px 12px; white-space: nowrap; }
+.mono { font: 12.5px ui-monospace, "SF Mono", Menlo, monospace; }
+table.access .badge { display: inline-block; padding: 2px 9px; }
