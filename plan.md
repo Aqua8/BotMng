@@ -193,6 +193,24 @@ cd server && npm start
 - [x] 12-2. radix-themes (Radix Themes 컨트롤 교체, 해/달 테마 토글(localStorage 저장), 로그·접속 로그 테이블화, 공통 컴포넌트 `components/`·`hooks/` 분리 — 화면 25개 + 동의 모달 21개 시나리오 통과, 토글 저장·새로고침 유지·시스템 설정 복귀 확인)
   - 참고: 테마를 Radix Theme의 `appearance`로 관리하고, 직접 만든 색 토큰은 Radix 변수(`--gray-*`, `--accent-*`)에 연결해 한 번에 바뀐다. Dialog 제목은 접근성을 위해 `h2`로 렌더링(기본은 `h1`).
 
+## 13. 테이블 페이지네이션과 정렬
+
+### 결정 사항 (사용자 확정)
+| 항목 | 결정 |
+|---|---|
+| 페이지네이션 | 번호 페이지 + 페이지 크기 선택(20/50/100, 기본 50) + 총 건수 표시. 서버 API를 `page/pageSize/total` 방식으로 변경하고 기존 커서(`beforeId`)·"더 보기"는 제거 |
+| 정렬 | 메시지를 뺀 모든 열. 열 머리글을 누르면 내림차순 → 오름차순 → 기본(시각 내림차순)으로 순환. 서버에서 허용된 열만 받음 |
+| 실시간 | 1페이지 + 시각 내림차순일 때만 새 로그를 끼워 넣음. 페이지나 정렬을 바꾸면 **실시간 스위치를 자동으로 끔**. 실시간을 다시 켜면 1페이지·기본 정렬로 돌아감 |
+
+### 설계
+- API: `GET /api/logs`, `GET /api/access-logs`에 `page`(≥1), `pageSize`(20/50/100), `sort`, `order`(asc/desc) 추가. 응답은 `{ items, total, page, pageSize }`.
+- 정렬 가능 열: 로그 `loggedAt, level, source, tag` / 접속 로그 `loggedAt, username, success, method, ip, country, os, browser, device`. 같은 값끼리는 `id`로 순서를 고정한다.
+- **게스트의 정렬 제한**: 게스트에게는 IP 앞 두 칸과 성공한 시도의 아이디만 보이므로, 가려진 값으로 정렬하면 순서로 숨긴 값을 유추할 수 있다. 게스트가 `ip`, `username`으로 정렬하려 하면 400으로 거부하고, 화면에서는 두 열의 정렬 버튼을 숨긴다.
+- 공통 컴포넌트: `Pagination`(번호, 이전/다음, 페이지 크기, 총 건수), `DataTable`에 정렬 머리글 추가, `usePagedList`를 페이지·정렬 상태를 가진 `useTableQuery`로 대체.
+
+### 진행 현황
+- [ ] 13-1. table-pagination-sort
+
 ## 10. 나중에 할 일 (필요해질 때)
 
 - **맥 절전 방지**: 잠자기에 들어가면 외부 접속이 끊긴다. 시스템 설정 > 에너지에서 "디스플레이가 꺼져 있을 때 자동 잠자기 방지"를 켜거나, `caffeinate -s`를 launchd에 등록한다.
