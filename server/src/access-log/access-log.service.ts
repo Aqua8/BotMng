@@ -1,13 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
+import { LessThan, MoreThanOrEqual, Repository } from "typeorm";
 import { clientCountry, clientIp } from "../auth/client-ip";
 import type { Role } from "../auth/user.entity";
 import { AccessLog } from "./access-log.entity";
 import { Sort, pageOffset } from "../common/paging";
 import { parseUserAgent } from "./access-log.util";
-import { LoginMethod, toView } from "./access-log.view";
+import { LoginMethod, RESUME_DEDUPE_MS, toView } from "./access-log.view";
 
 const RETENTION_DAYS = 365;
 
@@ -19,23 +19,37 @@ export class AccessLogService {
 
   constructor(@InjectRepository(AccessLog) private readonly repo: Repository<AccessLog>) {}
 
+  /** 요청에서 접속 정보(IP, 국가, 브라우저 등)를 뽑는다. */
+  private describe(req: RequestLike) {
+    const ua = req.headers["user-agent"];
+    const userAgent = ((Array.isArray(ua) ? ua[0] : ua) ?? "").slice(0, 512);
+    return { ip: clientIp(req).slice(0, 45), country: clientCountry(req), ...parseUserAgent(userAgent), userAgent };
+  }
+
   /** 로그인 시도를 기록한다. 기록에 실패해도 로그인 자체는 막지 않는다. */
   async record(req: RequestLike, username: string, success: boolean, method: LoginMethod) {
     try {
-      const ua = req.headers["user-agent"];
-      const userAgent = (Array.isArray(ua) ? ua[0] : ua) ?? "";
-      await this.repo.insert({
-        loggedAt: new Date(),
-        username: username.slice(0, 64),
-        success,
-        method,
-        ip: clientIp(req).slice(0, 45),
-        country: clientCountry(req),
-        ...parseUserAgent(userAgent),
-        userAgent: userAgent.slice(0, 512),
-      });
+      await this.repo.insert({ loggedAt: new Date(), username: username.slice(0, 64), success, method, ...this.describe(req) });
     } catch (err) {
       this.logger.error("접속 로그 저장 실패", err as Error);
+    }
+  }
+
+  /**
+   * 저장된 로그인으로 화면을 다시 연 것을 기록한다 (method=session).
+   * 같은 계정·IP·브라우저의 성공 기록(로그인 포함)이 최근 1시간 안에 있으면 건너뛴다. 기록했으면 true.
+   */
+  async recordResume(req: RequestLike, username: string): Promise<boolean> {
+    try {
+      const d = this.describe(req);
+      const since = new Date(Date.now() - RESUME_DEDUPE_MS);
+      const recent = await this.repo.exists({ where: { username, success: true, ip: d.ip, userAgent: d.userAgent, loggedAt: MoreThanOrEqual(since) } });
+      if (recent) return false;
+      await this.repo.insert({ loggedAt: new Date(), username: username.slice(0, 64), success: true, method: "session", ...d });
+      return true;
+    } catch (err) {
+      this.logger.error("접속 로그 저장 실패", err as Error);
+      return false;
     }
   }
 

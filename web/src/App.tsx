@@ -3,7 +3,7 @@ import { Button } from "@radix-ui/themes";
 import { ConsentModal } from "./ConsentModal";
 import { ThemeToggle } from "./theme";
 import { clearConsent, hasConsent, saveConsent } from "./consent";
-import { Session, clearSession, getSession, setUnauthorizedHandler } from "./api";
+import { Session, clearSession, getSession, resumeSession, setUnauthorizedHandler } from "./api";
 import { AccessLogs } from "./AccessLogs";
 import { Dashboard } from "./Dashboard";
 import { Login } from "./Login";
@@ -33,6 +33,11 @@ export function App() {
     }, 60_000);
     return () => clearInterval(t);
   }, []);
+
+  // 저장된 로그인으로 화면을 열었음을 알린다. 접속 정보 수집에 동의한 뒤에만 보낸다 (동의하지 않으면 로그아웃되는 흐름이므로).
+  useEffect(() => {
+    if (session && consented) void resumeSession();
+  }, [session?.accessToken, consented]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const agree = (remember24h: boolean) => {
     saveConsent(remember24h);

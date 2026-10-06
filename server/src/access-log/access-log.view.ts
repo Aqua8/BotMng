@@ -1,6 +1,9 @@
 import { maskIp } from "./access-log.util";
 
-export type LoginMethod = "password" | "guest";
+export type LoginMethod = "password" | "guest" | "session"; // session = 저장된 로그인으로 화면을 다시 연 경우
+
+/** 같은 계정·IP·브라우저의 성공 기록이 이 시간 안에 있으면 재접속을 다시 기록하지 않는다 */
+export const RESUME_DEDUPE_MS = 60 * 60 * 1000;
 export type ViewerRole = "admin" | "guest";
 
 /** access_logs 한 행 (엔티티와 같은 모양. Nest/TypeORM 에 의존하지 않아 단위 테스트가 쉽다) */

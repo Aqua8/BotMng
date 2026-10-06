@@ -9,7 +9,7 @@ import { AccessLogService } from "./access-log.service";
 
 class ListAccessLogsQuery {
   @IsOptional() @Transform(({ value }) => (value === "true" ? true : value === "false" ? false : value)) @IsBoolean() success?: boolean;
-  @IsOptional() @IsIn(["password", "guest"]) method?: LoginMethod;
+  @IsOptional() @IsIn(["password", "guest", "session"]) method?: LoginMethod;
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page: number = 1;

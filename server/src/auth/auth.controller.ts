@@ -47,6 +47,17 @@ export class AuthController {
     }
   }
 
+  /**
+   * 저장된 로그인으로 화면을 다시 열었음을 알린다 (접속 로그에 method=session 으로 기록, 같은 접속자는 1시간에 한 번만).
+   * 토큰 검증도 겸한다: 만료된 토큰이면 401.
+   */
+  @UseGuards(LoginThrottlerGuard, JwtAuthGuard)
+  @Post("resume")
+  @HttpCode(204)
+  async resume(@Req() req: { ip?: string; headers: Record<string, string | string[] | undefined>; user: AuthUser }) {
+    await this.accessLog.recordResume(req, req.user.username);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   me(@Req() req: { user: AuthUser }) {
