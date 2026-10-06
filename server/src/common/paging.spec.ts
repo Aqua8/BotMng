@@ -1,4 +1,4 @@
-import { PAGE_SIZES, pageOffset, resolveSort } from "./paging";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, pageOffset, resolveSort } from "./paging";
 
 describe("pageOffset", () => {
   it("1페이지는 0, 이후는 (page-1)*pageSize", () => {
@@ -9,8 +9,10 @@ describe("pageOffset", () => {
 });
 
 describe("PAGE_SIZES", () => {
-  it("허용하는 페이지 크기는 20/50/100", () => {
-    expect([...PAGE_SIZES]).toEqual([20, 50, 100]);
+  it("허용하는 페이지 크기는 5/10/20/50/100이고 기본은 20", () => {
+    expect([...PAGE_SIZES]).toEqual([5, 10, 20, 50, 100]);
+    expect(DEFAULT_PAGE_SIZE).toBe(20);
+    expect(PAGE_SIZES).toContain(DEFAULT_PAGE_SIZE);
   });
 });
 

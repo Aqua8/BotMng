@@ -1,6 +1,6 @@
 /** 목록 조회 공통: 페이지 크기, 오프셋 계산, 정렬 열 검증. Nest 에 의존하지 않는 순수 함수라 단위 테스트가 쉽다. */
-export const PAGE_SIZES = [20, 50, 100] as const;
-export const DEFAULT_PAGE_SIZE = 50;
+export const PAGE_SIZES = [5, 10, 20, 50, 100] as const;
+export const DEFAULT_PAGE_SIZE = 20;
 
 export const pageOffset = (page: number, pageSize: number) => (page - 1) * pageSize;
 

@@ -2,7 +2,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { Button, Flex, IconButton, Select, Text } from "@radix-ui/themes";
 import { pageWindow } from "../lib/page-window";
 
-export const PAGE_SIZES = [20, 50, 100];
+export const PAGE_SIZES = [5, 10, 20, 50, 100];
 
 interface Props {
   total: number;

@@ -14,7 +14,7 @@ export const DEFAULT_SORT: SortState = { key: "loggedAt", order: "desc" };
  * 실시간으로 들어오는 줄은 setRows / setTotal 로 직접 반영한다.
  */
 export function useTableQuery<T>(fetchPage: (q: TableQuery) => Promise<Paged<T>>, filterKey: string, { debounceMs = 0, onReset }: { debounceMs?: number; onReset?: () => void } = {}) {
-  const [pageSize, setPageSizeState] = useState(50);
+  const [pageSize, setPageSizeState] = useState(20);
   const [sort, setSortState] = useState<SortState | null>(null); // null = 기본(시각 내림차순)
   // 필터가 바뀌면 자동으로 1페이지가 되도록, 페이지에 어느 필터에서의 값인지를 함께 저장한다.
   const [pageState, setPageState] = useState({ filterKey, page: 1 });

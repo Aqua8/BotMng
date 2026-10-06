@@ -5,7 +5,7 @@
 ## 주요 기능
 
 - **로그 수집**: 봇의 `out.log` / `error.log`를 1초 간격으로 읽어(tail) MariaDB에 저장. 재시작해도 읽던 위치부터 이어서 읽고, 스택트레이스는 한 건으로 합칩니다.
-- **로그 조회**: 파일(out/error), 레벨(info/warn/error), 태그, 메시지 검색, 기간 필터, 번호 페이지네이션(20/50/100건, 총 건수 표시)과 열 정렬. 실시간은 최신순 1페이지에서만 반영하고 페이지·정렬을 바꾸면 자동으로 꺼짐
+- **로그 조회**: 파일(out/error), 레벨(info/warn/error), 태그, 메시지 검색, 기간 필터, 번호 페이지네이션(5/10/20/50/100건, 기본 20건, 총 건수 표시)과 열 정렬. 실시간은 최신순 1페이지에서만 반영하고 페이지·정렬을 바꾸면 자동으로 꺼짐
 - **실시간 스트리밍**: 새 로그를 SSE로 화면에 즉시 표시 (켜기/끄기, 끊기면 자동 재연결)
 - **대시보드**: 최근 24시간 한 줄 요약(에러 기준), 마지막 로그·봇 시작 시각, 시간대별 로그 양과 봇의 예약 발송 시각을 한 띠에 보여주는 "하루 시계", 태그별 건수, 최근 경고·에러
 - **인증**: JWT 로그인. 관리자(`admin`) 1개 + 읽기 전용 게스트(`guest`) 1개. 로그인 화면의 **"게스트로 로그인" 버튼**으로 비밀번호 없이 게스트로 들어갈 수 있음
@@ -103,7 +103,7 @@ ScheduleAlertBot이 출력 앞에 한국 시간과 레벨을 붙입니다. 이 �
 | POST | `/api/auth/login` | 로그인 → JWT (12시간). IP당 분당 10회 제한 |
 | POST | `/api/auth/guest` | 게스트 버튼. 비밀번호 없이 읽기 전용 게스트 토큰 발급. IP당 분당 10회 제한(로그인과 별도 집계) |
 | GET | `/api/auth/me` | 현재 사용자 |
-| GET | `/api/logs` | 목록. `source`, `level`, `tag`, `q`, `from`, `to` 필터 + `page`, `pageSize`(20/50/100), `sort`(`loggedAt`/`level`/`source`/`tag`), `order`(`asc`/`desc`). 응답 `{ items, total, page, pageSize }` |
+| GET | `/api/logs` | 목록. `source`, `level`, `tag`, `q`, `from`, `to` 필터 + `page`, `pageSize`(5/10/20/50/100, 기본 20), `sort`(`loggedAt`/`level`/`source`/`tag`), `order`(`asc`/`desc`). 응답 `{ items, total, page, pageSize }` |
 | GET | `/api/logs/tags` | 존재하는 태그 목록 |
 | GET | `/api/logs/stream` | 새 로그 SSE (`event: log`, 25초마다 `ping`) |
 | GET | `/api/stats` | 대시보드 통계 |

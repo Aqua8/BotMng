@@ -198,18 +198,19 @@ cd server && npm start
 ### 결정 사항 (사용자 확정)
 | 항목 | 결정 |
 |---|---|
-| 페이지네이션 | 번호 페이지 + 페이지 크기 선택(20/50/100, 기본 50) + 총 건수 표시. 서버 API를 `page/pageSize/total` 방식으로 변경하고 기존 커서(`beforeId`)·"더 보기"는 제거 |
+| 페이지네이션 | 번호 페이지 + 페이지 크기 선택(5/10/20/50/100, 기본 20) + 총 건수 표시. 서버 API를 `page/pageSize/total` 방식으로 변경하고 기존 커서(`beforeId`)·"더 보기"는 제거 |
 | 정렬 | 메시지를 뺀 모든 열. 열 머리글을 누르면 내림차순 → 오름차순 → 기본(시각 내림차순)으로 순환. 서버에서 허용된 열만 받음 |
 | 실시간 | 1페이지 + 시각 내림차순일 때만 새 로그를 끼워 넣음. 페이지나 정렬을 바꾸면 **실시간 스위치를 자동으로 끔**. 실시간을 다시 켜면 1페이지·기본 정렬로 돌아감 |
 
 ### 설계
-- API: `GET /api/logs`, `GET /api/access-logs`에 `page`(≥1), `pageSize`(20/50/100), `sort`, `order`(asc/desc) 추가. 응답은 `{ items, total, page, pageSize }`.
+- API: `GET /api/logs`, `GET /api/access-logs`에 `page`(≥1), `pageSize`(5/10/20/50/100), `sort`, `order`(asc/desc) 추가. 응답은 `{ items, total, page, pageSize }`.
 - 정렬 가능 열: 로그 `loggedAt, level, source, tag` / 접속 로그 `loggedAt, username, success, method, ip, country, os, browser, device`. 같은 값끼리는 `id`로 순서를 고정한다.
 - **게스트의 정렬 제한**: 게스트에게는 IP 앞 두 칸과 성공한 시도의 아이디만 보이므로, 가려진 값으로 정렬하면 순서로 숨긴 값을 유추할 수 있다. 게스트가 `ip`, `username`으로 정렬하려 하면 400으로 거부하고, 화면에서는 두 열의 정렬 버튼을 숨긴다.
 - 공통 컴포넌트: `Pagination`(번호, 이전/다음, 페이지 크기, 총 건수), `DataTable`에 정렬 머리글 추가, `usePagedList`를 페이지·정렬 상태를 가진 `useTableQuery`로 대체.
 
 ### 진행 현황
 - [x] 13-1. table-pagination-sort (서버: 단위 테스트 34개, API 검증(페이지 겹침·누락 없음, 정렬, 400 검증, 게스트 정렬 제한). 웹: pageWindow 단위 테스트 5개, 브라우저 시나리오 26개 + 기존 화면 25개 + 동의 모달 21개 통과)
+  - 변경: 페이지 크기를 5/10/20/50/100(기본 20)으로 조정했다 (처음 20/50/100, 기본 50). 서버 `common/paging.ts`와 화면 `Pagination.tsx`·`useTableQuery.ts`에 값이 각각 있어 함께 바꿔야 한다.
   - 참고: 열 머리글 클릭은 내림차순 → 오름차순 → 기본(시각 내림차순) 순환. 페이지·정렬을 바꾸면 1페이지로 돌아가고, 필터를 바꿔도 1페이지로 돌아간다.
 
 ## 10. 나중에 할 일 (필요해질 때)
