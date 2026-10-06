@@ -5,6 +5,7 @@ import { LessThan, Repository } from "typeorm";
 import { clientCountry, clientIp } from "../auth/client-ip";
 import type { Role } from "../auth/user.entity";
 import { AccessLog } from "./access-log.entity";
+import { Sort, pageOffset } from "../common/paging";
 import { parseUserAgent } from "./access-log.util";
 import { LoginMethod, toView } from "./access-log.view";
 
@@ -38,18 +39,15 @@ export class AccessLogService {
     }
   }
 
-  /** 최신순 목록. 다음 페이지는 nextCursor 를 beforeId 로 넘긴다. */
-  async list(role: Role, q: { success?: boolean; method?: LoginMethod; from?: string; to?: string; beforeId?: number; limit: number }) {
-    const qb = this.repo.createQueryBuilder("a").orderBy("a.id", "DESC").limit(q.limit + 1);
+  /** 페이지 단위 목록. 정렬 열은 호출한 쪽에서 허용 목록으로 검증한 값이어야 한다. 같은 값끼리는 id 로 순서를 고정한다. */
+  async list(role: Role, q: { success?: boolean; method?: LoginMethod; from?: string; to?: string; page: number; pageSize: number; sort: Sort }) {
+    const qb = this.repo.createQueryBuilder("a").orderBy(`a.${q.sort.column}`, q.sort.direction).addOrderBy("a.id", q.sort.direction).skip(pageOffset(q.page, q.pageSize)).take(q.pageSize);
     if (q.success !== undefined) qb.andWhere("a.success = :success", { success: q.success });
     if (q.method) qb.andWhere("a.method = :method", { method: q.method });
     if (q.from) qb.andWhere("a.loggedAt >= :from", { from: new Date(q.from) });
     if (q.to) qb.andWhere("a.loggedAt <= :to", { to: new Date(q.to) });
-    if (q.beforeId) qb.andWhere("a.id < :beforeId", { beforeId: q.beforeId });
-    const rows = await qb.getMany();
-    const hasMore = rows.length > q.limit;
-    const items = (hasMore ? rows.slice(0, q.limit) : rows).map((r) => toView(r, role));
-    return { items, nextCursor: hasMore ? items[items.length - 1].id : null };
+    const [rows, total] = await qb.getManyAndCount();
+    return { items: rows.map((r) => toView(r, role)), total, page: q.page, pageSize: q.pageSize };
   }
 
   @Cron("0 40 3 * * *")

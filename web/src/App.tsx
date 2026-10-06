@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Button } from "@radix-ui/themes";
 import { ConsentModal } from "./ConsentModal";
+import { ThemeToggle } from "./theme";
 import { clearConsent, hasConsent, saveConsent } from "./consent";
 import { Session, clearSession, getSession, setUnauthorizedHandler } from "./api";
 import { AccessLogs } from "./AccessLogs";
@@ -56,28 +58,39 @@ export function App() {
     );
   }
 
+  const items: { id: Tab; label: string }[] = [
+    { id: "dashboard", label: "대시보드" },
+    { id: "logs", label: "로그" },
+    { id: "access", label: "접속 로그" },
+  ];
+
   return (
     <>
-      <header>
-        <strong>BotMng</strong>
-        <nav>
-          <button className={tab === "dashboard" ? "active" : ""} onClick={() => setTab("dashboard")}>
-            대시보드
-          </button>
-          <button className={tab === "logs" ? "active" : ""} onClick={() => setTab("logs")}>
-            로그
-          </button>
-          <button className={tab === "access" ? "active" : ""} onClick={() => setTab("access")}>
-            접속 로그
-          </button>
-        </nav>
-        <span className="spacer" />
-        <span className="muted">
-          {session.username} ({session.role === "admin" ? "관리자" : "게스트"})
-        </span>
-        <button onClick={logout}>로그아웃</button>
-      </header>
-      <main>{tab === "dashboard" ? <Dashboard /> : tab === "logs" ? <Logs /> : <AccessLogs />}</main>
+      <div className="shell">
+        <aside className="side">
+          <div className="brand">BotMng</div>
+          <nav className="nav" aria-label="메뉴">
+            {items.map((it) => (
+              <button key={it.id} className={`nav-item${tab === it.id ? " active" : ""}`} aria-current={tab === it.id ? "page" : undefined} onClick={() => setTab(it.id)}>
+                {it.label}
+              </button>
+            ))}
+          </nav>
+          <div className="side-foot">
+            <div className="who">
+              <span>{session.username}</span>
+              <small>{session.role === "admin" ? "관리자" : "게스트 (읽기 전용)"}</small>
+            </div>
+            <div className="side-actions">
+              <ThemeToggle />
+              <Button variant="soft" color="gray" onClick={logout}>
+                로그아웃
+              </Button>
+            </div>
+          </div>
+        </aside>
+        <main className="content">{tab === "dashboard" ? <Dashboard /> : tab === "logs" ? <Logs /> : <AccessLogs />}</main>
+      </div>
       {modal}
     </>
   );

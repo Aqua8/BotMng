@@ -48,6 +48,20 @@ export interface AccessLogFilter {
   method?: "password" | "guest";
 }
 
+export type SortOrder = "asc" | "desc";
+export interface TableQuery {
+  page: number;
+  pageSize: number;
+  sort?: string; // 지정하지 않으면 시각 내림차순
+  order?: SortOrder;
+}
+export interface Paged<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface Session {
   accessToken: string;
   username: string;
@@ -107,10 +121,8 @@ const toQuery = (params: Record<string, string | number | boolean | undefined>) 
   return s ? `?${s}` : "";
 };
 
-export const fetchLogs = (filter: LogFilter, beforeId?: number) =>
-  get<{ items: LogEntry[]; nextCursor: number | null }>(`/logs${toQuery({ ...filter, beforeId, limit: 100 })}`);
-export const fetchAccessLogs = (filter: AccessLogFilter, beforeId?: number) =>
-  get<{ items: AccessLogEntry[]; nextCursor: number | null }>(`/access-logs${toQuery({ ...filter, beforeId, limit: 50 })}`);
+export const fetchLogs = (filter: LogFilter, q: TableQuery) => get<Paged<LogEntry>>(`/logs${toQuery({ ...filter, ...q })}`);
+export const fetchAccessLogs = (filter: AccessLogFilter, q: TableQuery) => get<Paged<AccessLogEntry>>(`/access-logs${toQuery({ ...filter, ...q })}`);
 export const fetchTags = () => get<string[]>("/logs/tags");
 export const fetchStats = () => get<Stats>("/stats");
 
@@ -148,6 +160,12 @@ export function streamLogs(onLog: (e: LogEntry) => void, onState: (connected: bo
   })();
   return () => ctrl.abort();
 }
+
+const KST = { timeZone: "Asia/Seoul" } as const;
+export const formatClock = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { ...KST, hour12: false }); // 17:24:02
+export const formatStamp = (iso: string) => new Date(iso).toLocaleString("sv-SE", KST); // 2026-10-06 17:24:02
+export const dayKey = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", KST); // 2026-10-06 (날짜 구분용)
+export const formatDay = (iso: string) => new Date(iso).toLocaleDateString("ko-KR", { ...KST, month: "long", day: "numeric", weekday: "long" });
 
 export const formatTime = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false }) : "-";

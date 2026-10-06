@@ -5,10 +5,11 @@
 ## 주요 기능
 
 - **로그 수집**: 봇의 `out.log` / `error.log`를 1초 간격으로 읽어(tail) MariaDB에 저장. 재시작해도 읽던 위치부터 이어서 읽고, 스택트레이스는 한 건으로 합칩니다.
-- **로그 조회**: 파일(out/error), 레벨(info/warn/error), 태그, 메시지 검색, 기간 필터와 커서 기반 페이지네이션
+- **로그 조회**: 파일(out/error), 레벨(info/warn/error), 태그, 메시지 검색, 기간 필터, 번호 페이지네이션(5/10/20/50/100건, 기본 20건, 총 건수 표시)과 열 정렬. 실시간은 최신순 1페이지에서만 반영하고 페이지·정렬을 바꾸면 자동으로 꺼짐
 - **실시간 스트리밍**: 새 로그를 SSE로 화면에 즉시 표시 (켜기/끄기, 끊기면 자동 재연결)
-- **대시보드**: 전체/24시간/7일 건수, 마지막 로그·봇 시작 시각, 시간대별 차트, 태그별 건수
+- **대시보드**: 최근 24시간 한 줄 요약(에러 기준), 마지막 로그·봇 시작 시각, 시간대별 로그 양과 봇의 예약 발송 시각을 한 띠에 보여주는 "하루 시계", 태그별 건수, 최근 경고·에러
 - **인증**: JWT 로그인. 관리자(`admin`) 1개 + 읽기 전용 게스트(`guest`) 1개. 로그인 화면의 **"게스트로 로그인" 버튼**으로 비밀번호 없이 게스트로 들어갈 수 있음
+- **다크/라이트 테마**: 사이드바와 로그인 화면의 해/달 버튼으로 전환. 처음에는 시스템 설정을 따르고, 토글하면 선택을 브라우저(localStorage)에 계속 저장
 - **접속 로그**: 로그인 시도(성공/실패)의 시각, 아이디, IP, 국가, OS, 브라우저, 기기를 저장하고 화면에서 조회. 게스트에게는 IP(앞 두 칸만 표시, 예: `203.0.***.***`), User-Agent 원문, 실패한 시도의 아이디를 서버에서 가려서 내려보냄
 - **접속 안내·동의 모달**: 접속하면 서비스 소개와 접속 정보 수집 안내 모달을 띄우고, 동의해야 로그인/게스트 버튼을 쓸 수 있음. "24시간 동안 보지 않기"를 체크하고 동의하면 브라우저에 24시간(localStorage), 체크 없이 동의하면 탭을 닫을 때까지(sessionStorage) 기억하며, 동의가 없으면 다시 모달을 띄움 (동의 여부는 화면에서만 막고 서버가 검증하지는 않음)
 - **보관 정책**: 365일이 지난 봇 로그는 매일 03:30에, 접속 로그는 매일 03:40에 자동 삭제
@@ -41,7 +42,12 @@ BotMng/
 │       ├── auth/      JWT 로그인, 게스트 로그인, 계정 시드, 로그인 횟수 제한, 접속자 IP 판별
 │       ├── access-log/ 로그인 접속 로그 저장·조회, User-Agent 해석, 역할별 IP 마스킹
 │       └── logs/      파서, 수집기, 조회/통계 API, SSE, 보관 기간 정리
-├── web/               React 프론트엔드 (로그인·게스트 버튼, 동의 모달, 대시보드, 로그 목록, 접속 로그)
+├── web/               React 프론트엔드 (관제 콘솔 디자인, Radix Themes)
+│   └── src/
+│       ├── components/ 공통 컴포넌트 (DataTable, FilterSelect, 배지, 패널 등)
+│       ├── hooks/      useTableQuery (페이지·정렬 상태를 가진 서버 페이지네이션 테이블)
+│       ├── lib/        page-window (페이지 번호 목록 계산, 단위 테스트 포함)
+│       └── theme.tsx   다크/라이트 상태와 토글
 ├── launchd/           macOS 상시 구동 설정 템플릿 (com.botmng.plist.example)
 ├── plan.md            기획·결정 사항·진행 현황·운영 메모
 └── CLAUDE.md          작업 지침
@@ -69,6 +75,8 @@ BotMng/
 | 테스트 | Jest 30.5.2, ts-jest 29.4.14 | |
 | 프론트엔드 | React / React DOM | 19.3.0 |
 | 번들러 | Vite 8.3.3, `@vitejs/plugin-react` 6.1.2 | |
+| UI 컴포넌트 | Radix Themes 3.3.0, Radix Icons 1.3.2 | |
+| 글꼴 | IBM Plex Sans KR(화면 전체), IBM Plex Mono(로그 줄) — `@fontsource/*` 5.3.0으로 함께 배포 | |
 | 상시 구동 | launchd (macOS) | |
 | 외부 접속 | Cloudflare 프록시 + Origin 인증서 | |
 
@@ -95,13 +103,13 @@ ScheduleAlertBot이 출력 앞에 한국 시간과 레벨을 붙입니다. 이 �
 | POST | `/api/auth/login` | 로그인 → JWT (12시간). IP당 분당 10회 제한 |
 | POST | `/api/auth/guest` | 게스트 버튼. 비밀번호 없이 읽기 전용 게스트 토큰 발급. IP당 분당 10회 제한(로그인과 별도 집계) |
 | GET | `/api/auth/me` | 현재 사용자 |
-| GET | `/api/logs` | 목록. `source`, `level`, `tag`, `q`, `from`, `to`, `beforeId`, `limit`(≤500) |
+| GET | `/api/logs` | 목록. `source`, `level`, `tag`, `q`, `from`, `to` 필터 + `page`, `pageSize`(5/10/20/50/100, 기본 20), `sort`(`loggedAt`/`level`/`source`/`tag`), `order`(`asc`/`desc`). 응답 `{ items, total, page, pageSize }` |
 | GET | `/api/logs/tags` | 존재하는 태그 목록 |
 | GET | `/api/logs/stream` | 새 로그 SSE (`event: log`, 25초마다 `ping`) |
 | GET | `/api/stats` | 대시보드 통계 |
-| GET | `/api/access-logs` | 접속 로그 목록. `success`, `method`, `from`, `to`, `beforeId`, `limit`(≤200). 게스트에게는 IP 마스킹, User-Agent·실패한 시도의 아이디 제외 |
+| GET | `/api/access-logs` | 접속 로그 목록. `success`, `method`, `from`, `to` 필터 + `page`, `pageSize`, `sort`(`loggedAt`/`username`/`success`/`method`/`ip`/`country`/`os`/`browser`/`device`), `order`. 게스트에게는 IP 마스킹, User-Agent·실패한 시도의 아이디 제외, `ip`·`username` 정렬은 400 |
 
-`/api/logs`는 최신순이며, 응답의 `nextCursor`를 `beforeId`로 넘기면 다음 페이지를 받습니다.
+목록은 기본이 시각 내림차순(최신순)이고, 정렬 열은 서버가 허용한 이름만 받으며 같은 값끼리는 `id`로 순서를 고정합니다. 게스트가 가려진 값(IP, 계정)으로 정렬하면 순서로 숨긴 값을 유추할 수 있어 막았습니다.
 
 ## 설치와 실행
 
@@ -163,7 +171,7 @@ cd server && npm start
 cd server && npm test
 ```
 
-로그 파서, 접속자 IP·국가 판별(Cloudflare 대역 신뢰), User-Agent 해석, IP 마스킹, 역할별 응답(게스트에게 가려지는 값) 단위 테스트가 있습니다. NestJS 12가 ESM 전용이라 컨트롤러·서비스는 Jest에서 직접 불러오지 못해, Nest와 무관한 순수 함수로 분리해 테스트합니다.
+로그 파서, 페이지 계산·정렬 허용 규칙, 접속자 IP·국가 판별(Cloudflare 대역 신뢰), User-Agent 해석, IP 마스킹, 역할별 응답(게스트에게 가려지는 값) 단위 테스트가 있습니다. NestJS 12가 ESM 전용이라 컨트롤러·서비스는 Jest에서 직접 불러오지 못해, Nest와 무관한 순수 함수로 분리해 테스트합니다. 웹의 순수 함수(페이지 번호 계산)는 Node 내장 테스트로 `cd web && npm test`를 실행합니다.
 
 ## 상시 구동 (launchd)
 

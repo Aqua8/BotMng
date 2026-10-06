@@ -1,7 +1,14 @@
+import { Flex } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Level, LogEntry, LogFilter, Source, fetchLogs, fetchTags, formatTime, streamLogs } from "./api";
+import { Level, LogEntry, LogFilter, Source, fetchLogs, fetchTags, formatStamp, streamLogs } from "./api";
+import { LevelBadge } from "./components/Badges";
+import { Column, DataTable } from "./components/DataTable";
+import { DateTimeField, SearchField } from "./components/Fields";
+import { FilterSelect } from "./components/FilterSelect";
+import { LiveSwitch } from "./components/LiveSwitch";
+import { PageHead } from "./components/PageHead";
+import { DEFAULT_SORT, nextSort, useTableQuery } from "./hooks/useTableQuery";
 
-const MAX_ROWS = 2000; // 라이브로 쌓이는 행이 무한정 늘지 않도록 상한을 둔다
 const toIso = (local: string) => (local ? new Date(`${local}:00+09:00`).toISOString() : undefined); // 입력값은 KST로 해석
 
 function matches(e: LogEntry, f: LogFilter) {
@@ -15,62 +22,72 @@ function matches(e: LogEntry, f: LogFilter) {
   );
 }
 
+/** 태그는 별도 열에 보여주므로 메시지 앞의 "[태그] "는 뺀다. */
+const bodyOf = (r: LogEntry) => (r.tag && r.message.startsWith(`[${r.tag}]`) ? r.message.slice(r.tag.length + 2).trimStart() : r.message);
+
+const columns: Column<LogEntry>[] = [
+  { key: "time", header: "시각", sortKey: "loggedAt", className: "nowrap muted", cell: (r) => formatStamp(r.loggedAt) },
+  { key: "level", header: "레벨", sortKey: "level", cell: (r) => <LevelBadge level={r.level} /> },
+  { key: "source", header: "파일", sortKey: "source", className: "nowrap muted", cell: (r) => r.source },
+  { key: "tag", header: "태그", sortKey: "tag", className: "nowrap", cell: (r) => (r.tag ? <span className="tag">[{r.tag}]</span> : <span className="muted">-</span>) },
+  { key: "msg", header: "메시지", cell: (r) => <pre className="msg">{bodyOf(r)}</pre> },
+];
+
 export function Logs() {
-  const [source, setSource] = useState<Source | "">("");
-  const [level, setLevel] = useState<Level | "">("");
+  const [source, setSource] = useState("");
+  const [level, setLevel] = useState("");
   const [tag, setTag] = useState("");
   const [q, setQ] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [rows, setRows] = useState<LogEntry[]>([]);
-  const [cursor, setCursor] = useState<number | null>(null);
+  const [fresh, setFresh] = useState<Set<number>>(new Set());
   const [live, setLive] = useState(true);
+  const [autoOff, setAutoOff] = useState(false); // 페이지·정렬을 바꿔서 실시간이 자동으로 꺼졌는지
   const [connected, setConnected] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const filter: LogFilter = {
-    source: source || undefined,
-    level: level || undefined,
+    source: (source || undefined) as Source | undefined,
+    level: (level || undefined) as Level | undefined,
     tag: tag || undefined,
     q: q || undefined,
     from: toIso(from),
     to: toIso(to),
   };
-  const filterKey = JSON.stringify(filter);
   const filterRef = useRef(filter);
   filterRef.current = filter;
+
+  // 검색어는 입력이 멈춘 뒤(300ms) 조회한다. 필터가 바뀌면 1페이지로 돌아가고 새로 고친 줄 강조도 초기화한다.
+  const tq = useTableQuery((query) => fetchLogs(filter, query), JSON.stringify(filter), { debounceMs: 300, onReset: () => setFresh(new Set()) });
+  const { setRows, setTotal, pageSize, atHome } = tq;
 
   useEffect(() => {
     fetchTags().then(setTags).catch(() => {});
   }, []);
 
-  // 필터가 바뀌면 (검색어는 입력이 멈춘 뒤) 처음부터 다시 조회한다.
+  // 실시간 새 로그는 최신순 1페이지에만 자연스럽게 들어간다. 페이지나 정렬을 바꾸면 실시간을 끈다.
   useEffect(() => {
-    let cancelled = false;
-    const t = setTimeout(() => {
-      setLoading(true);
-      fetchLogs(filterRef.current)
-        .then((r) => {
-          if (cancelled) return;
-          setRows(r.items);
-          setCursor(r.nextCursor);
-          setError("");
-        })
-        .catch((e: Error) => !cancelled && setError(e.message))
-        .finally(() => !cancelled && setLoading(false));
-    }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [filterKey]);
+    if (live && !atHome) {
+      setLive(false);
+      setAutoOff(true);
+    }
+  }, [live, atHome]);
 
-  const onLive = useCallback((e: LogEntry) => {
-    if (!matches(e, filterRef.current)) return;
-    setRows((prev) => (prev.some((r) => r.id === e.id) ? prev : [e, ...prev].slice(0, MAX_ROWS)));
-  }, []);
+  const toggleLive = (on: boolean) => {
+    setAutoOff(false);
+    if (on) tq.resetView(); // 다시 켜면 1페이지·기본 정렬로 돌아간다
+    setLive(on);
+  };
+
+  const onLive = useCallback(
+    (e: LogEntry) => {
+      if (!matches(e, filterRef.current)) return;
+      setRows((prev) => (prev.some((r) => r.id === e.id) ? prev : [e, ...prev].slice(0, pageSize)));
+      setTotal((t) => t + 1);
+      setFresh((prev) => new Set(prev).add(e.id));
+    },
+    [setRows, setTotal, pageSize],
+  );
 
   useEffect(() => {
     if (!live) {
@@ -80,74 +97,36 @@ export function Logs() {
     return streamLogs(onLive, setConnected);
   }, [live, onLive]);
 
-  const loadMore = async () => {
-    if (cursor === null) return;
-    setLoading(true);
-    try {
-      const r = await fetchLogs(filter, cursor);
-      setRows((prev) => [...prev, ...r.items]);
-      setCursor(r.nextCursor);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <>
-      <div className="filters card">
-        <select value={source} onChange={(e) => setSource(e.target.value as Source | "")}>
-          <option value="">전체 파일</option>
-          <option value="out">out.log</option>
-          <option value="error">error.log</option>
-        </select>
-        <select value={level} onChange={(e) => setLevel(e.target.value as Level | "")}>
-          <option value="">전체 레벨</option>
-          <option value="info">info</option>
-          <option value="warn">warn</option>
-          <option value="error">error</option>
-        </select>
-        <select value={tag} onChange={(e) => setTag(e.target.value)}>
-          <option value="">전체 태그</option>
-          {tags.map((t) => (
-            <option key={t} value={t}>
-              [{t}]
-            </option>
-          ))}
-        </select>
-        <input className="grow" placeholder="메시지 검색" value={q} onChange={(e) => setQ(e.target.value)} />
-        <label>
-          시작(KST) <input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <label>
-          종료(KST) <input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} />
-        </label>
-        <label className="live">
-          <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
-          실시간 <span className={`dot${live && connected ? " on" : ""}`} title={connected ? "연결됨" : "연결 안 됨"} />
-        </label>
-      </div>
+      <PageHead title="로그" lede="봇이 남긴 out.log와 error.log를 최신순으로 보여줍니다." />
 
-      {error && <p className="error-text">{error}</p>}
+      <Flex wrap="wrap" align="center" gap="2" mb="3">
+        <FilterSelect label="로그 파일" allLabel="전체 파일" value={source} onChange={setSource} options={[{ value: "out", label: "out.log" }, { value: "error", label: "error.log" }]} />
+        <FilterSelect label="레벨" allLabel="전체 레벨" value={level} onChange={setLevel} options={["info", "warn", "error"].map((v) => ({ value: v, label: v }))} />
+        <FilterSelect label="태그" allLabel="전체 태그" value={tag} onChange={setTag} options={tags.map((t) => ({ value: t, label: `[${t}]` }))} />
+        <SearchField value={q} onChange={setQ} placeholder="메시지 검색" />
+        <LiveSwitch checked={live} connected={connected} onChange={toggleLive} />
+        {autoOff && <span className="muted note">페이지·정렬을 바꿔서 실시간이 꺼졌습니다</span>}
+      </Flex>
+      <Flex wrap="wrap" align="center" gap="4" mb="3">
+        <DateTimeField label="시작(KST)" value={from} onChange={setFrom} />
+        <DateTimeField label="종료(KST)" value={to} onChange={setTo} />
+      </Flex>
 
-      <div className="card list">
-        {rows.length === 0 && !loading && <p className="muted">로그가 없습니다</p>}
-        {rows.map((r) => (
-          <div key={r.id} className={`row ${r.level}`}>
-            <span className="time">{formatTime(r.loggedAt)}</span>
-            <span className={`badge ${r.level}`}>{r.level}</span>
-            <span className="src">{r.source}</span>
-            <pre>{r.message}</pre>
-          </div>
-        ))}
-        {cursor !== null && (
-          <button onClick={loadMore} disabled={loading}>
-            더 보기
-          </button>
-        )}
-        {loading && <p className="muted">불러오는 중...</p>}
-      </div>
+      {tq.error && <p className="error-text">{tq.error}</p>}
+      <DataTable
+        columns={columns}
+        rows={tq.rows}
+        rowKey={(r) => r.id}
+        rowClassName={(r) => [r.level === "error" ? "row-error" : "", fresh.has(r.id) ? "fresh" : ""].filter(Boolean).join(" ") || undefined}
+        loading={tq.loading}
+        emptyText="조건에 맞는 로그가 없습니다."
+        minWidth={760}
+        sort={tq.sort ?? DEFAULT_SORT}
+        onSort={(key) => tq.setSort(nextSort(tq.sort, key))}
+        pagination={{ total: tq.total, page: tq.page, pageSize: tq.pageSize, onPage: tq.setPage, onPageSize: tq.setPageSize }}
+      />
     </>
   );
 }
