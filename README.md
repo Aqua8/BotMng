@@ -110,13 +110,23 @@ GRANT ALL PRIVILEGES ON botmng.* TO 'botmng'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
+DB 포트는 이 서버 안에서만 쓰므로 **외부에 열지 않습니다.** 공인 IP를 가진 서버라면 특히 중요합니다. Homebrew MariaDB 기준으로 `my.cnf.d` 아래에 설정 파일을 두고 재시작합니다.
+
+```bash
+printf '[mysqld]\nbind-address = 127.0.0.1\n' > /opt/homebrew/etc/my.cnf.d/bind-local.cnf
+brew services restart mariadb
+lsof -iTCP:3306 -sTCP:LISTEN -n -P   # 127.0.0.1:3306 으로만 나와야 함
+```
+
+MySQL Workbench 같은 도구도 같은 서버에서 `127.0.0.1:3306`으로 접속합니다.
+
 그다음 테이블을 만듭니다. 서버는 테이블을 자동으로 만들거나 고치지 않으므로(TypeORM `synchronize` 끔) **스키마는 SQL 파일로 직접 관리**합니다. 여러 번 실행해도 안전합니다.
 
 ```bash
 mariadb -ubotmng -p botmng < server/db/schema.sql
 ```
 
-스키마를 바꿀 때는 `server/db/schema.sql`과 `server/src`의 엔티티를 함께 고치고 DB에도 직접 반영합니다.
+스키마를 바꿀 때는 `server/db/schema.sql`과 `server/src`의 엔티티를 함께 고치고 DB에도 직접 반영합니다. 모든 테이블과 컬럼에는 `COMMENT`(설명)가 달려 있어 Workbench 등에서 바로 확인할 수 있습니다.
 
 ### 2. 환경 변수
 
@@ -179,6 +189,7 @@ launchctl bootout gui/$(id -u)/com.botmng
 - 모든 조회 API는 JWT 필수, 비밀번호는 bcrypt 해시로 저장, 입력은 class-validator로 검증
 - 게스트는 조회만 가능 (현재 API가 모두 조회용)
 - 로그인은 접속자 IP당 분당 10회로 제한. `CF-Connecting-IP`는 접속 소켓이 **Cloudflare IP 대역일 때만** 신뢰해 헤더 위조로 제한을 피할 수 없음 (`server/src/auth/client-ip.ts`, 대역 변경 시 갱신 필요)
+- DB 포트(3306)는 `bind-address = 127.0.0.1`로 로컬에서만 열려 있어 인터넷에 노출되지 않음
 - TLS 인증서를 설정하지 않으면 `127.0.0.1`에서만 받아 실수로 HTTP가 외부에 열리지 않음
 - `.env`, 인증서, 서버 로그, 실제 경로가 든 plist는 Git에서 제외. 비밀번호·키·IP·도메인·로컬 경로 같은 값은 `.env`나 로컬 파일에만 두고 저장소에는 올리지 않음
 
