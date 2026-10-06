@@ -22,7 +22,7 @@ describe("toView (역할별 마스킹)", () => {
 
   it("게스트는 IP가 가려지고 User-Agent 원문이 없다", () => {
     const v = toView(log(), "guest");
-    expect(v.ip).toBe("203.0.113.*");
+    expect(v.ip).toBe("203.0.***.***");
     expect(v.userAgent).toBeNull();
     expect(JSON.stringify(v)).not.toContain("203.0.113.42");
     expect(JSON.stringify(v)).not.toContain("secret-ua");

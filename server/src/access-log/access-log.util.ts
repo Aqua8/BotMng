@@ -18,12 +18,12 @@ export function parseUserAgent(ua?: string): ParsedUserAgent {
   return { os, browser, device: r.platform.type ?? "unknown" };
 }
 
-/** 게스트에게 보여줄 IP. IPv4 는 마지막 옥텟, IPv6 는 앞 3블록만 남기고 가린다. */
+/** 게스트에게 보여줄 IP. 앞 두 칸(IPv4 는 두 옥텟, IPv6 는 두 블록)만 남기고 나머지 칸을 *로 가린다. 예) 203.0.***.*** */
 export function maskIp(ip: string): string {
   const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
   const v4 = mapped ? mapped[1] : ip;
-  if (isIPv4(v4)) return v4.split(".").slice(0, 3).join(".") + ".*";
-  if (isIPv6(ip)) return expandIPv6(ip).slice(0, 3).join(":") + ":*";
+  if (isIPv4(v4)) return [...v4.split(".").slice(0, 2), "***", "***"].join(".");
+  if (isIPv6(ip)) return [...expandIPv6(ip).slice(0, 2), ...Array(6).fill("****")].join(":");
   return "*";
 }
 
