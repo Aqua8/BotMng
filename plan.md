@@ -30,7 +30,7 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 
 ## 4. DB 스키마
 
-정의는 `server/db/schema.sql`이 기준이다 (아래는 요약).
+정의는 `server/db/schema.sql`이 기준이다 (아래는 요약). 테이블·컬럼 설명은 DB의 `COMMENT`로도 저장한다. 기존 DB에 컬럼 설명을 바꿀 때는 `ALTER TABLE ... MODIFY ... COMMENT`를 직접 실행한다.
 
 - `log_entries`: id, source(out/error), level, tag(nullable), message(text), loggedAt(datetime 3), fileOffset. `(source, fileOffset)` 유니크로 중복 수집 방지, `loggedAt`/`tag` 인덱스.
 - `log_offsets`: source(PK), offset. 재시작 시 이어서 읽는다. 파일이 줄어들면(로테이션) 0부터.
@@ -70,6 +70,8 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 - [x] 5. dashboard-stats (SQL 직접 집계와 일치 확인)
 - [x] 5-1. kst-storage (DB KST 저장, 통계 버킷 KST, 신규 수집 검증 완료)
 - [x] 6. web (헤드리스 Chrome으로 로그인/대시보드/필터/검색/실시간 ON·OFF/로그아웃 검증 완료)
+- [x] 8-3. db-comments (모든 테이블·컬럼에 COMMENT 추가, 운영 DB에 ALTER 적용·검증 완료)
+- [x] 8-4. DB 포트 3306 로컬 바인딩 (`my.cnf.d/bind-local.cnf`, 공인 IP로 닫힘 확인)
 - [x] 8-2. db-schema (synchronize 끔, schema.sql로 직접 관리 — 운영 테이블과 동일함 검증, 인덱스 이름 정리)
 - [x] 8. hardening (로그인 IP당 분당 10회 제한, 127.0.0.1 바인딩 — 429/바인딩 검증 완료)
 - [x] 8-1. direct-https (선택적 TLS 서빙, CF 대역에서만 CF-Connecting-IP 신뢰 — 자체서명 인증서로 검증 완료. 실제 Origin 인증서는 사용자 발급 필요)
