@@ -29,3 +29,8 @@ export function toView(log: AccessLogRow, role: ViewerRole): AccessLogView {
   if (role === "admin") return { id, loggedAt, username: log.username, success, method, ip: log.ip, country, os, browser, device, userAgent: log.userAgent };
   return { id, loggedAt, username: success ? log.username : null, success, method, ip: maskIp(log.ip), country, os, browser, device, userAgent: null };
 }
+
+const ACCESS_SORTS = ["loggedAt", "username", "success", "method", "ip", "country", "os", "browser", "device"] as const;
+
+/** 정렬에 쓸 수 있는 열. 게스트에게는 IP 와 아이디가 가려져 있으므로 이 값으로 정렬하면 순서로 숨긴 값을 유추할 수 있어 막는다. */
+export const allowedAccessSorts = (role: ViewerRole): readonly string[] => (role === "admin" ? ACCESS_SORTS : ACCESS_SORTS.filter((c) => c !== "ip" && c !== "username"));

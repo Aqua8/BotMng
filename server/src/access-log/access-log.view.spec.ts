@@ -1,4 +1,4 @@
-import { AccessLogRow, toView } from "./access-log.view";
+import { AccessLogRow, allowedAccessSorts, toView } from "./access-log.view";
 
 const log = (over: Partial<AccessLogRow> = {}): AccessLogRow => ({
     id: 1,
@@ -38,4 +38,18 @@ describe("toView (역할별 마스킹)", () => {
   it("관리자는 실패한 시도의 아이디도 본다", () => {
     expect(toView(log({ success: false, username: "hacker" }), "admin").username).toBe("hacker");
 });
+});
+
+describe("allowedAccessSorts (게스트의 정렬 제한)", () => {
+  it("관리자는 모든 열로 정렬할 수 있다", () => {
+    const admin = allowedAccessSorts("admin");
+    for (const col of ["loggedAt", "username", "success", "method", "ip", "country", "os", "browser", "device"]) expect(admin).toContain(col);
+  });
+
+  it("게스트는 가려진 값(IP, 아이디)으로는 정렬할 수 없다 — 순서로 숨긴 값을 유추하지 못하게", () => {
+    const guest = allowedAccessSorts("guest");
+    expect(guest).not.toContain("ip");
+    expect(guest).not.toContain("username");
+    for (const col of ["loggedAt", "success", "method", "country", "os", "browser", "device"]) expect(guest).toContain(col);
+  });
 });

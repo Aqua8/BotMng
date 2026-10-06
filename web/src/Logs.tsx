@@ -7,9 +7,8 @@ import { DateTimeField, SearchField } from "./components/Fields";
 import { FilterSelect } from "./components/FilterSelect";
 import { LiveSwitch } from "./components/LiveSwitch";
 import { PageHead } from "./components/PageHead";
-import { usePagedList } from "./hooks/usePagedList";
+import { DEFAULT_SORT, nextSort, useTableQuery } from "./hooks/useTableQuery";
 
-const MAX_ROWS = 2000; // 라이브로 쌓이는 행이 무한정 늘지 않도록 상한을 둔다
 const toIso = (local: string) => (local ? new Date(`${local}:00+09:00`).toISOString() : undefined); // 입력값은 KST로 해석
 
 function matches(e: LogEntry, f: LogFilter) {
@@ -27,10 +26,10 @@ function matches(e: LogEntry, f: LogFilter) {
 const bodyOf = (r: LogEntry) => (r.tag && r.message.startsWith(`[${r.tag}]`) ? r.message.slice(r.tag.length + 2).trimStart() : r.message);
 
 const columns: Column<LogEntry>[] = [
-  { key: "time", header: "시각", className: "nowrap muted", cell: (r) => formatStamp(r.loggedAt) },
-  { key: "level", header: "레벨", cell: (r) => <LevelBadge level={r.level} /> },
-  { key: "source", header: "파일", className: "nowrap muted", cell: (r) => r.source },
-  { key: "tag", header: "태그", className: "nowrap", cell: (r) => (r.tag ? <span className="tag">[{r.tag}]</span> : <span className="muted">-</span>) },
+  { key: "time", header: "시각", sortKey: "loggedAt", className: "nowrap muted", cell: (r) => formatStamp(r.loggedAt) },
+  { key: "level", header: "레벨", sortKey: "level", cell: (r) => <LevelBadge level={r.level} /> },
+  { key: "source", header: "파일", sortKey: "source", className: "nowrap muted", cell: (r) => r.source },
+  { key: "tag", header: "태그", sortKey: "tag", className: "nowrap", cell: (r) => (r.tag ? <span className="tag">[{r.tag}]</span> : <span className="muted">-</span>) },
   { key: "msg", header: "메시지", cell: (r) => <pre className="msg">{bodyOf(r)}</pre> },
 ];
 
@@ -44,6 +43,7 @@ export function Logs() {
   const [tags, setTags] = useState<string[]>([]);
   const [fresh, setFresh] = useState<Set<number>>(new Set());
   const [live, setLive] = useState(true);
+  const [autoOff, setAutoOff] = useState(false); // 페이지·정렬을 바꿔서 실시간이 자동으로 꺼졌는지
   const [connected, setConnected] = useState(false);
 
   const filter: LogFilter = {
@@ -57,21 +57,36 @@ export function Logs() {
   const filterRef = useRef(filter);
   filterRef.current = filter;
 
-  // 검색어는 입력이 멈춘 뒤(300ms) 조회한다. 필터가 바뀌면 새로 고친 줄 강조도 초기화한다.
-  const list = usePagedList((before) => fetchLogs(filter, before), [JSON.stringify(filter)], { debounceMs: 300, onReset: () => setFresh(new Set()) });
-  const { setRows } = list;
+  // 검색어는 입력이 멈춘 뒤(300ms) 조회한다. 필터가 바뀌면 1페이지로 돌아가고 새로 고친 줄 강조도 초기화한다.
+  const tq = useTableQuery((query) => fetchLogs(filter, query), JSON.stringify(filter), { debounceMs: 300, onReset: () => setFresh(new Set()) });
+  const { setRows, setTotal, pageSize, atHome } = tq;
 
   useEffect(() => {
     fetchTags().then(setTags).catch(() => {});
   }, []);
 
+  // 실시간 새 로그는 최신순 1페이지에만 자연스럽게 들어간다. 페이지나 정렬을 바꾸면 실시간을 끈다.
+  useEffect(() => {
+    if (live && !atHome) {
+      setLive(false);
+      setAutoOff(true);
+    }
+  }, [live, atHome]);
+
+  const toggleLive = (on: boolean) => {
+    setAutoOff(false);
+    if (on) tq.resetView(); // 다시 켜면 1페이지·기본 정렬로 돌아간다
+    setLive(on);
+  };
+
   const onLive = useCallback(
     (e: LogEntry) => {
       if (!matches(e, filterRef.current)) return;
-      setRows((prev) => (prev.some((r) => r.id === e.id) ? prev : [e, ...prev].slice(0, MAX_ROWS)));
+      setRows((prev) => (prev.some((r) => r.id === e.id) ? prev : [e, ...prev].slice(0, pageSize)));
+      setTotal((t) => t + 1);
       setFresh((prev) => new Set(prev).add(e.id));
     },
-    [setRows],
+    [setRows, setTotal, pageSize],
   );
 
   useEffect(() => {
@@ -91,24 +106,26 @@ export function Logs() {
         <FilterSelect label="레벨" allLabel="전체 레벨" value={level} onChange={setLevel} options={["info", "warn", "error"].map((v) => ({ value: v, label: v }))} />
         <FilterSelect label="태그" allLabel="전체 태그" value={tag} onChange={setTag} options={tags.map((t) => ({ value: t, label: `[${t}]` }))} />
         <SearchField value={q} onChange={setQ} placeholder="메시지 검색" />
-        <LiveSwitch checked={live} connected={connected} onChange={setLive} />
+        <LiveSwitch checked={live} connected={connected} onChange={toggleLive} />
+        {autoOff && <span className="muted note">페이지·정렬을 바꿔서 실시간이 꺼졌습니다</span>}
       </Flex>
       <Flex wrap="wrap" align="center" gap="4" mb="3">
         <DateTimeField label="시작(KST)" value={from} onChange={setFrom} />
         <DateTimeField label="종료(KST)" value={to} onChange={setTo} />
       </Flex>
 
-      {list.error && <p className="error-text">{list.error}</p>}
+      {tq.error && <p className="error-text">{tq.error}</p>}
       <DataTable
         columns={columns}
-        rows={list.rows}
+        rows={tq.rows}
         rowKey={(r) => r.id}
         rowClassName={(r) => [r.level === "error" ? "row-error" : "", fresh.has(r.id) ? "fresh" : ""].filter(Boolean).join(" ") || undefined}
-        loading={list.loading}
-        hasMore={list.hasMore}
-        onLoadMore={list.loadMore}
+        loading={tq.loading}
         emptyText="조건에 맞는 로그가 없습니다."
         minWidth={760}
+        sort={tq.sort ?? DEFAULT_SORT}
+        onSort={(key) => tq.setSort(nextSort(tq.sort, key))}
+        pagination={{ total: tq.total, page: tq.page, pageSize: tq.pageSize, onPage: tq.setPage, onPageSize: tq.setPageSize }}
       />
     </>
   );

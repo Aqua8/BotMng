@@ -21,7 +21,7 @@ export function Dashboard() {
 
   useEffect(() => {
     const load = () =>
-      Promise.all([fetchStats(), fetchLogs({ level: "error" }), fetchLogs({ level: "warn" })])
+      Promise.all([fetchStats(), fetchLogs({ level: "error" }, { page: 1, pageSize: 20 }), fetchLogs({ level: "warn" }, { page: 1, pageSize: 20 })])
         .then(([s, errs, warns]) => {
           setStats(s);
           setAlerts([...errs.items, ...warns.items].sort((a, b) => b.id - a.id).slice(0, 5));
