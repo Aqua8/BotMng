@@ -138,7 +138,7 @@ cd server && npm start
 
 ### 진행 현황
 - [x] 11-1. access-log (UA/IP 마스킹 단위 테스트, 실제 Cloudflare 경로에서 IP·국가·OS·브라우저 기록 확인, 게스트 응답에 원본 IP·UA·실패 아이디 없음 확인, 브라우저로 관리자/게스트 화면·필터 확인)
-- [ ] 11-2. guest-login
+- [x] 11-2. guest-login (비밀번호 없이 게스트 토큰 발급, 접속 로그 method=guest 기록, 횟수 제한(별도 집계) 확인, 브라우저에서 버튼 클릭 확인. 보너스: Windows 10/11 OS 표기 수정)
 - [ ] 11-3. consent-modal
 
 ## 10. 나중에 할 일 (필요해질 때)
