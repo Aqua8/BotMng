@@ -1,6 +1,7 @@
 import { Flex } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Level, LogEntry, LogFilter, Source, fetchLogs, fetchTags, formatStamp, streamLogs } from "./api";
+import { LogDetailDialog } from "./LogDetailDialog";
 import { LevelBadge, OutcomeBadge } from "./components/Badges";
 import { Column, DataTable } from "./components/DataTable";
 import { DateTimeField, SearchField } from "./components/Fields";
@@ -48,6 +49,7 @@ export function Logs() {
   const [live, setLive] = useState(true);
   const [autoOff, setAutoOff] = useState(false); // 페이지·정렬을 바꿔서 실시간이 자동으로 꺼졌는지
   const [connected, setConnected] = useState(false);
+  const [selected, setSelected] = useState<LogEntry | null>(null);
 
   const filter: LogFilter = {
     source: (source || undefined) as Source | undefined,
@@ -125,11 +127,13 @@ export function Logs() {
         rowClassName={(r) => [r.level === "error" ? "row-error" : "", fresh.has(r.id) ? "fresh" : ""].filter(Boolean).join(" ") || undefined}
         loading={tq.loading}
         emptyText="조건에 맞는 로그가 없습니다."
+        onRowClick={setSelected}
         minWidth={900}
         sort={tq.sort ?? DEFAULT_SORT}
         onSort={(key) => tq.setSort(nextSort(tq.sort, key))}
         pagination={{ total: tq.total, page: tq.page, pageSize: tq.pageSize, onPage: tq.setPage, onPageSize: tq.setPageSize }}
       />
+      <LogDetailDialog log={selected} onClose={() => setSelected(null)} />
     </>
   );
 }
