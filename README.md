@@ -39,15 +39,18 @@ NestJS 서버 하나가 REST API와 빌드된 React 화면(`web/dist`)을 함께
 ```
 BotMng/
 ├── server/            NestJS 백엔드
+│   ├── db/            schema.sql (테이블 정의, 직접 관리)
 │   └── src/
-│       ├── auth/      JWT 로그인, 게스트 로그인, 계정 시드, 로그인 횟수 제한, 접속자 IP 판별
-│       ├── access-log/ 로그인 접속 로그 저장·조회, User-Agent 해석, 역할별 IP 마스킹
-│       └── logs/      파서, 수집기, 조회/통계 API, SSE, 보관 기간 정리
+│       ├── auth/      JWT 로그인, 게스트 로그인, 재접속 기록, 계정 시드, 로그인 횟수 제한, 접속자 IP 판별
+│       ├── access-log/ 접속 로그 저장·조회·집계, User-Agent 해석, 역할별 IP 마스킹
+│       ├── health/    DB·수집기 상태 판정 (/api/health)
+│       ├── common/    페이지·정렬 규칙
+│       └── logs/      파서, 수집기(중복 건너뛰기), 조회/통계/CSV API, SSE, 보관 기간 정리
 ├── web/               React 프론트엔드 (관제 콘솔 디자인, Radix Themes)
 │   └── src/
-│       ├── components/ 공통 컴포넌트 (DataTable, FilterSelect, 배지, 패널 등)
+│       ├── components/ 공통 컴포넌트 (DataTable, Pagination, FilterSelect, QuickRange, PeriodSelect, 배지, 패널 등)
 │       ├── hooks/      useTableQuery (페이지·정렬 상태를 가진 서버 페이지네이션 테이블)
-│       ├── lib/        page-window (페이지 번호 목록 계산, 단위 테스트 포함)
+│       ├── lib/        순수 함수와 단위 테스트 (페이지 번호, 빠른 기간, 처리시간·상태 표기)
 │       └── theme.tsx   다크/라이트 상태와 토글
 ├── launchd/           macOS 상시 구동 설정 템플릿 (com.botmng.plist.example)
 ├── plan.md            기획·결정 사항·진행 현황·운영 메모
@@ -186,7 +189,7 @@ cd server && npm start
 cd server && npm test
 ```
 
-로그 파서, 페이지 계산·정렬 허용 규칙, 접속자 IP·국가 판별(Cloudflare 대역 신뢰), User-Agent 해석, IP 마스킹, 역할별 응답(게스트에게 가려지는 값) 단위 테스트가 있습니다. NestJS 12가 ESM 전용이라 컨트롤러·서비스는 Jest에서 직접 불러오지 못해, Nest와 무관한 순수 함수로 분리해 테스트합니다. 웹의 순수 함수(페이지 번호 계산)는 Node 내장 테스트로 `cd web && npm test`를 실행합니다.
+로그 파서, 수집기 중복 건너뛰기, 페이지 계산·정렬 허용 규칙, 접속자 IP·국가 판별(Cloudflare 대역 신뢰), User-Agent 해석, IP 마스킹, 역할별 응답(게스트에게 가려지는 값), 명령·접속 통계 집계, 상태 판정, CSV 이스케이프 단위 테스트(91개)가 있습니다. NestJS 12가 ESM 전용이라 컨트롤러·서비스는 Jest에서 직접 불러오지 못해, Nest와 무관한 순수 함수로 분리해 테스트합니다. 웹의 순수 함수(페이지 번호, 빠른 기간, 표기 함수; 18개)는 Node 내장 테스트로 `cd web && npm test`를 실행합니다.
 
 ## 상시 구동 (launchd)
 

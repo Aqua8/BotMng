@@ -20,7 +20,7 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 - BotMng은 봇과 같은 맥에서 돌며 로그 파일 경로를 `.env`로 읽는다.
 - 스키마는 `server/db/schema.sql`(`CREATE TABLE IF NOT EXISTS`)로 직접 관리하고 TypeORM `synchronize`는 끈다. 자동 변경으로 컬럼이 삭제·변경되어 데이터가 사라지는 일을 막기 위함. 마이그레이션 도구는 도입하지 않는다.
 - 게스트는 조회 API만 쓸 수 있고, 현재 API는 전부 조회용이라 별도 권한 분기는 만들지 않는다. 쓰기 API가 생기면 관리자 전용 가드를 추가한다.
-- 외부 노출(HTTPS, 터널/리버스 프록시)은 서비스 범위 밖. 앱은 JWT 인증과 비밀번호 해시까지만 책임진다.
+- 외부 노출은 처음엔 범위 밖이었으나, 이후 Cloudflare 프록시 + 직접 HTTPS 서빙으로 포함했다(아래 8-1, 9번). 앱은 JWT 인증, 비밀번호 해시, 로그인 횟수 제한을 책임진다.
 
 ## 3. 로그 형식
 
@@ -32,17 +32,21 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 
 정의는 `server/db/schema.sql`이 기준이다 (아래는 요약). 테이블·컬럼 설명은 DB의 `COMMENT`로도 저장한다. 기존 DB에 컬럼 설명을 바꿀 때는 `ALTER TABLE ... MODIFY ... COMMENT`를 직접 실행한다.
 
-- `log_entries`: id, source(out/error), level, tag(nullable), message(text), loggedAt(datetime 3), fileOffset. `(source, fileOffset)` 유니크로 중복 수집 방지, `loggedAt`/`tag` 인덱스.
+- `log_entries`: id, source(out/error), level, tag(nullable), message(text), loggedAt(datetime 3), fileOffset, outcome(nullable, 14번), durationMs(nullable, 14번). `(source, fileOffset)` 유니크로 중복 수집 방지, `loggedAt`/`tag` 인덱스.
 - `log_offsets`: source(PK), offset. 재시작 시 이어서 읽는다. 파일이 줄어들면(로테이션) 0부터.
 - `users`: id, username(유니크), passwordHash, role(admin/guest). 시작 시 `.env` 비밀번호로 시드.
+- `access_logs`: 로그인·재접속 기록 (11번, 15번). 시각, 아이디, 성공 여부, method(password/guest/session), IP, 국가, OS, 브라우저, 기기, User-Agent 원문.
 
 ## 5. API
 
-- `POST /api/auth/login` → JWT
-- `GET /api/logs` 필터(source, level, tag, q, from, to) + 커서(beforeId) 페이지네이션
+초기 계획 기준이며, **전체 목록과 현재 파라미터는 README의 API 표가 기준**이다.
+
+- `POST /api/auth/login` → JWT (`/auth/guest`, `/auth/resume`, `/auth/me`는 11·15번)
+- `GET /api/logs` 필터(source, level, tag, q, from, to) + `page/pageSize/sort/order` (처음엔 커서 `beforeId`였으나 13번에서 번호 페이지로 변경)
 - `GET /api/logs/tags`
 - `GET /api/logs/stream` SSE 실시간 (fetch 스트림으로 Authorization 헤더 사용)
 - `GET /api/stats` 대시보드 요약
+- 이후 추가: `/api/logs/export.csv`, `/api/health`, `/api/stats/access`, `/api/stats/commands`, `/api/access-logs` (11·16·17번)
 
 ## 6. 기능 브랜치 계획
 
@@ -58,7 +62,7 @@ ScheduleAlertBot(`../ScheduleAlertBot`)의 `data/out.log`, `data/error.log`를 D
 ## 7. 사용자 작업 필요
 
 - MariaDB root 비밀번호로 DB/유저 생성 (README의 SQL 참고). 테이블은 `server/db/schema.sql` 실행
-- 외부 노출 방식 결정(터널/프록시) — 배포 단계에서 논의
+- ~~외부 노출 방식 결정~~ → Cloudflare 프록시 + 직접 HTTPS로 결정·적용 완료 (9번)
 
 ## 8. 진행 현황
 
@@ -183,7 +187,9 @@ cd server && npm start
 | `SearchField`, `DateTimeField` | 검색 입력, 라벨 있는 날짜·시각 입력 | 로그 |
 | `LiveSwitch` | 실시간 켜기/끄기 스위치 + 연결 램프 | 로그 |
 | `DataTable<T>` | 열 정의(`columns`)와 행 데이터만 받는 테이블. 빈 상태, 로딩, "더 보기", 가로 스크롤, 행 강조 지원 | 로그, 접속 로그 |
-| `usePagedList` (hook) | 커서 페이지네이션 목록 상태(조회, 더 보기, 필터 변경 시 재조회, 입력 지연) | 로그, 접속 로그 |
+| `usePagedList` (hook) | 커서 페이지네이션 목록 상태. **13번에서 `useTableQuery`로 대체됨** | (제거) |
+| `Pagination`, `useTableQuery` (13번) | 번호 페이지·페이지 크기·정렬 상태 | 로그, 접속 로그 |
+| `QuickRange`, `PeriodSelect` (17번) | 빠른 기간 버튼, 24시간/7일/30일 선택 | 로그, 접속 로그, 대시보드 패널 |
 
 원칙: 두 군데 이상에서 실제로 쓰는 것만 공통으로 만든다. 한 화면에서만 쓰는 조각(하루 시계, 태그 막대)은 그 화면 파일에 둔다.
 
@@ -246,7 +252,8 @@ cd server && npm start
 - 동의 모달 문구를 "로그인할 때"에서 "접속할 때(로그인하거나 저장된 로그인으로 다시 열 때)"로 고친다. 앞 11번 섹션의 "일반 API 호출은 기록하지 않는다"는 그대로다(화면을 여는 1회만 기록).
 
 ### 진행 현황
-- [x] 15-1. access-resume (서버: 단위 테스트 42개, API 검증(401, 로그인 직후 생략, 다른 브라우저는 기록, 같은 브라우저는 1시간 중복 방지, 횟수 제한). 웹: 브라우저 시나리오 12개(동의 전 미기록·동의 후 기록·거부 시 로그아웃·만료 토큰은 로그인 화면·방식 표시/필터) + 기존 화면 31·테이블 28·동의 모달 21개 통과)\n  - 참고: 접속 정보 수집 동의 문구를 "접속할 때(로그인하거나 저장된 로그인으로 다시 열 때)"로 고쳤다.
+- [x] 15-1. access-resume (서버: 단위 테스트 42개, API 검증(401, 로그인 직후 생략, 다른 브라우저는 기록, 같은 브라우저는 1시간 중복 방지, 횟수 제한). 웹: 브라우저 시나리오 12개(동의 전 미기록·동의 후 기록·거부 시 로그아웃·만료 토큰은 로그인 화면·방식 표시/필터) + 기존 화면 31·테이블 28·동의 모달 21개 통과)
+  - 참고: 접속 정보 수집 동의 문구를 "접속할 때(로그인하거나 저장된 로그인으로 다시 열 때)"로 고쳤다.
 
 ## 16. 명령 사용 통계
 
@@ -285,7 +292,7 @@ cd server && npm start
 
 **17-3. 빠른 기간 선택** — 로그와 접속 로그에 "최근 1시간 / 오늘 / 최근 24시간 / 7일 / 해제" 버튼. 값은 한국 시간(KST) 기준 `datetime-local` 입력에 채워진다. 접속 로그에는 기간 입력(API는 이미 지원)을 새로 추가.
 
-**17-4. 접속 요약** — `GET /api/stats/access?days=1|7|30`(기본 1=오늘 아님, 24시간 기준). 접속 수, 성공/실패, 고유 접속자(IP 개수), 방식별, 국가별. **게스트에게도 보이되 IP 같은 개인 식별 값은 개수로만** 보여준다.
+**17-4. 접속 요약** — `GET /api/stats/access?days=1|7|30`(기본 7. 1=최근 24시간). 접속 수, 성공/실패, 고유 접속자(IP 개수), 방식별, 국가별. **게스트에게도 보이되 IP 같은 개인 식별 값은 개수로만** 보여준다.
 
 **17-5. CSV 내보내기** — `GET /api/logs/export.csv`, **관리자만(서버에서 403)**. 현재 필터·정렬을 그대로 적용, 최대 50,000건(넘으면 잘렸음을 헤더로 알림). 열: 시각(KST), 레벨, 파일, 태그, 결과, 처리시간(ms), 메시지. UTF-8 BOM(Excel 한글), 따옴표·줄바꿈 이스케이프, `= + - @`로 시작하는 셀은 앞에 `'`를 붙여 수식 실행(CSV 인젝션)을 막는다. 화면 버튼은 관리자에게만 보인다.
 
@@ -317,7 +324,11 @@ SQL 인젝션·특수문자 입력과 DB 트랜잭션 문제가 예방되어 있
 - 재접속 기록의 1시간 중복 방지는 "조회 후 저장"이라 이론상 같은 순간의 동시 요청에서 중복될 수 있다. 8개 동시 요청에서는 1건만 저장되어 재현되지 않았다.
 
 ### 진행 현황
-- [x] 18-1. collector-self-heal
+- [x] 18-1. collector-self-heal (서버 단위 테스트 총 91개, 웹 18개)
+
+## 현재 상태 (2026-10-07)
+
+기능 계획(1~18번)은 모두 완료되어 병합된 상태다. 진행 중인 작업은 없다. 서버는 launchd로 상시 구동 중이며 테스트는 `cd server && npm test`(91개), `cd web && npm test`(18개)로 확인한다. 이후 작업은 아래 10번 "나중에 할 일"에서 고른다.
 
 ## 10. 나중에 할 일 (필요해질 때)
 
