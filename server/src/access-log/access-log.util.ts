@@ -9,11 +9,16 @@ export interface ParsedUserAgent {
 
 const major = (version?: string) => version?.split(".")[0];
 
+function osLabel(name: string, version?: string): string {
+  if (name === "Windows" && version === "NT 10.0") return "Windows 10/11"; // 둘 다 NT 10.0 으로 보고된다
+  return [name, version].filter(Boolean).join(" ");
+}
+
 /** User-Agent 에서 OS / 브라우저 / 기기 종류를 뽑는다. 해석할 수 없으면 Unknown. */
 export function parseUserAgent(ua?: string): ParsedUserAgent {
   if (!ua) return { os: "Unknown", browser: "Unknown", device: "unknown" };
   const r = Bowser.parse(ua);
-  const os = r.os.name ? [r.os.name, r.os.version].filter(Boolean).join(" ") : "Unknown";
+  const os = r.os.name ? osLabel(r.os.name, r.os.version) : "Unknown";
   const browser = r.browser.name ? [r.browser.name, major(r.browser.version)].filter(Boolean).join(" ") : "Unknown";
   return { os, browser, device: r.platform.type ?? "unknown" };
 }

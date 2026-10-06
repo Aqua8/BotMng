@@ -56,3 +56,6 @@ table.access th { text-align: left; font-weight: 500; color: var(--muted); font-
 table.access td { padding: 6px 12px; white-space: nowrap; }
 .mono { font: 12.5px ui-monospace, "SF Mono", Menlo, monospace; }
 table.access .badge { display: inline-block; padding: 2px 9px; }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.hint { margin: 0; font-size: 12px; text-align: center; }
