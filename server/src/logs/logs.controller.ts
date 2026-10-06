@@ -23,7 +23,7 @@ class ListLogsQuery {
 }
 
 const KEEPALIVE_MS = 25_000;
-const LOG_SORTS = ["loggedAt", "level", "source", "tag"] as const; // 메시지는 길어서 정렬 의미가 적고 검색이 있어 제외
+const LOG_SORTS = ["loggedAt", "level", "source", "tag", "outcome", "durationMs"] as const; // 메시지는 길어서 정렬 의미가 적고 검색이 있어 제외
 
 @UseGuards(JwtAuthGuard)
 @Controller("logs")

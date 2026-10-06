@@ -93,6 +93,15 @@ ScheduleAlertBot이 출력 앞에 한국 시간과 레벨을 붙입니다. 이 �
 - 시각은 `Z` 또는 `±HH:MM`을 받아들이고, DB에는 **KST로 저장**합니다. 화면에서도 KST로 표시합니다.
 - `[태그]`는 메시지 앞부분에서 추출해 태그 필터에 씁니다.
 - 타임스탬프가 없는 이전 형식의 로그는 파일 수정 시각을 시각으로 저장하고, 줄마다 독립 항목으로 처리합니다.
+- **Discord 명령 사용 로그**(`[command]`)는 결과와 처리 시간을 별도 컬럼으로 분리해 저장합니다. 처리 시간은 확인 버튼을 기다린 시간을 뺀 값입니다.
+
+```
+2026-10-06T21:44:52.251+09:00 INFO [command] /일정추가 성공 (10558ms)
+2026-10-06T21:44:52.251+09:00 WARN [command] /일정추가 실패 (80ms): Google API 오류(403)
+→ message "[command] /일정추가: Google API 오류(403)", outcome failure, durationMs 80
+```
+
+  `outcome`은 `success`/`failure`/`cancelled`, `durationMs`는 ms 값이며, 명령 로그가 아닌 줄은 둘 다 `NULL`입니다. 형식이 다른 `[command]` 줄은 건드리지 않습니다. 화면의 로그 테이블에는 "결과"(배지)와 "처리시간"(`80ms`, `10.6초`, `1분 5초`) 열로 보이고 둘 다 정렬할 수 있습니다.
 
 ## API
 
@@ -103,7 +112,7 @@ ScheduleAlertBot이 출력 앞에 한국 시간과 레벨을 붙입니다. 이 �
 | POST | `/api/auth/login` | 로그인 → JWT (12시간). IP당 분당 10회 제한 |
 | POST | `/api/auth/guest` | 게스트 버튼. 비밀번호 없이 읽기 전용 게스트 토큰 발급. IP당 분당 10회 제한(로그인과 별도 집계) |
 | GET | `/api/auth/me` | 현재 사용자 |
-| GET | `/api/logs` | 목록. `source`, `level`, `tag`, `q`, `from`, `to` 필터 + `page`, `pageSize`(5/10/20/50/100, 기본 20), `sort`(`loggedAt`/`level`/`source`/`tag`), `order`(`asc`/`desc`). 응답 `{ items, total, page, pageSize }` |
+| GET | `/api/logs` | 목록. `source`, `level`, `tag`, `q`, `from`, `to` 필터 + `page`, `pageSize`(5/10/20/50/100, 기본 20), `sort`(`loggedAt`/`level`/`source`/`tag`/`outcome`/`durationMs`), `order`(`asc`/`desc`). 응답 `{ items, total, page, pageSize }` |
 | GET | `/api/logs/tags` | 존재하는 태그 목록 |
 | GET | `/api/logs/stream` | 새 로그 SSE (`event: log`, 25초마다 `ping`) |
 | GET | `/api/stats` | 대시보드 통계 |

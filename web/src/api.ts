@@ -7,6 +7,8 @@ export interface LogEntry {
   level: Level;
   tag: string | null;
   message: string;
+  outcome: "success" | "failure" | "cancelled" | null; // Discord 명령 사용 로그([command])의 결과. 그 밖에는 null
+  durationMs: number | null; // 명령 처리 시간(ms, 확인 버튼 대기 제외). 그 밖에는 null
   loggedAt: string;
 }
 

@@ -1,11 +1,17 @@
 export type LogSource = "out" | "error";
 export type LogLevel = "info" | "warn" | "error";
 
+export type CommandOutcome = "success" | "failure" | "cancelled";
+
 export interface ParsedLog {
   source: LogSource;
   level: LogLevel;
   tag: string | null;
   message: string;
+  /** Discord 명령 사용 로그([command])의 결과. 그 밖의 로그는 null */
+  outcome: CommandOutcome | null;
+  /** 명령 처리 시간(ms, 확인 버튼 대기 제외). 명령 로그가 아니면 null */
+  durationMs: number | null;
   loggedAt: Date;
   fileOffset: number;
 }
@@ -13,15 +19,26 @@ export interface ParsedLog {
 // ScheduleAlertBot의 src/logger.ts가 만드는 형식: "<ISO시각(Z 또는 +09:00)> <INFO|WARN|ERROR> <메시지>"
 const LINE = /^(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})) (INFO|WARN|ERROR) (.*)$/;
 const TAG = /^\[([^\]]+)\]/;
+// ScheduleAlertBot 의 commandLog.ts 형식: "[command] /일정추가 성공 (1243ms)" 또는 "... 실패 (80ms): 사유"
+const COMMAND = /^\[command\] (\S+) (성공|실패|취소) \((\d+)ms\)(?:: (.*))?$/;
+const OUTCOME = { 성공: "success", 실패: "failure", 취소: "cancelled" } as const;
+
+/** 명령 로그에서 결과와 처리 시간을 별도 값으로 빼고, 메시지에는 "[command] /명령(: 사유)"만 남긴다. 형식이 다르면 건드리지 않는다. */
+function splitCommand(tag: string | null, message: string) {
+  const m = tag === "command" ? COMMAND.exec(message) : null;
+  if (!m) return { message, outcome: null, durationMs: null };
+  return { message: `[command] ${m[1]}${m[4] ? `: ${m[4]}` : ""}`, outcome: OUTCOME[m[2] as keyof typeof OUTCOME] as CommandOutcome, durationMs: Number(m[3]) };
+}
 
 function newEntry(source: LogSource, line: string, fileOffset: number, fallback: Date): ParsedLog {
   const m = LINE.exec(line);
   if (m) {
+    const tag = TAG.exec(m[3])?.[1] ?? null;
     return {
       source,
       level: m[2].toLowerCase() as LogLevel,
-      tag: TAG.exec(m[3])?.[1] ?? null,
-      message: m[3],
+      tag,
+      ...splitCommand(tag, m[3]),
       loggedAt: new Date(m[1]),
       fileOffset,
     };
@@ -32,6 +49,8 @@ function newEntry(source: LogSource, line: string, fileOffset: number, fallback:
     level: line.startsWith("(node:") ? "warn" : source === "error" ? "error" : "info",
     tag: TAG.exec(line)?.[1] ?? null,
     message: line,
+    outcome: null,
+    durationMs: null,
     loggedAt: fallback,
     fileOffset,
   };

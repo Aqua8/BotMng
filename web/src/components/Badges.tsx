@@ -20,3 +20,15 @@ export function ResultBadge({ success }: { success: boolean }) {
     </Badge>
   );
 }
+
+const OUTCOME = { success: { color: "green", text: "성공" }, failure: { color: "red", text: "실패" }, cancelled: { color: "gray", text: "취소" } } as const;
+
+/** Discord 명령 사용 결과 배지 (성공/실패/취소) */
+export function OutcomeBadge({ outcome }: { outcome: keyof typeof OUTCOME }) {
+  const { color, text } = OUTCOME[outcome];
+  return (
+    <Badge color={color} variant="soft">
+      {text}
+    </Badge>
+  );
+}
