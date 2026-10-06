@@ -1,4 +1,4 @@
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, pageOffset, resolveSort } from "./paging";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, pageOffset, resolveSort, sortErrorMessage } from "./paging";
 
 describe("pageOffset", () => {
   it("1페이지는 0, 이후는 (page-1)*pageSize", () => {
@@ -35,5 +35,18 @@ describe("resolveSort", () => {
   it("허용되지 않은 열은 null (호출한 쪽에서 400 처리)", () => {
     expect(resolveSort("message", "asc", allowed)).toBeNull();
     expect(resolveSort("id; DROP TABLE users", "asc", allowed)).toBeNull();
+  });
+});
+
+describe("sortErrorMessage", () => {
+  const allowed = ["loggedAt", "level", "tag"];
+
+  it("사용할 수 있는 열을 알려준다", () => {
+    expect(sortErrorMessage(allowed)).toBe("정렬할 수 없는 열입니다. 사용할 수 있는 열: loggedAt, level, tag");
+  });
+
+  it("보낸 값은 응답에 되돌려주지 않는다 (인자로 받지도 않는다)", () => {
+    expect(sortErrorMessage.length).toBe(1);
+    expect(sortErrorMessage(allowed)).not.toContain("SELECT");
   });
 });

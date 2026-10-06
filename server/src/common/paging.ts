@@ -18,3 +18,6 @@ export function resolveSort(sort: string | undefined, order: "asc" | "desc" | un
   if (!allowed.includes(sort)) return null;
   return { column: sort, direction: order === "asc" ? "ASC" : "DESC" };
 }
+
+/** 허용되지 않은 정렬 열을 요청했을 때의 안내 문구. 사용자가 보낸 값은 응답에 되돌려주지 않고 사용할 수 있는 열만 알려준다. */
+export const sortErrorMessage = (allowed: readonly string[]) => `정렬할 수 없는 열입니다. 사용할 수 있는 열: ${allowed.join(", ")}`;

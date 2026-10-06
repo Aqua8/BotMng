@@ -3,8 +3,9 @@ import { ConfigService } from "@nestjs/config";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { open, stat } from "node:fs/promises";
 import { Subject } from "rxjs";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 import { LogEntry } from "./log-entry.entity";
+import { withoutStored } from "./log-dedupe";
 import { LogOffset } from "./log-offset.entity";
 import { SourceStatus, describeCollectorError, lagBytes } from "../health/health.logic";
 import { LogSource, parseChunk } from "./log-parser";
@@ -80,6 +81,21 @@ export class CollectorService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** 이번에 읽은 범위 중 아직 저장되지 않은 항목만 돌려준다. */
+  private async freshEntries(m: EntityManager, source: LogSource, entries: LogEntry[]) {
+    const rows = await m
+      .getRepository(LogEntry)
+      .createQueryBuilder("l")
+      .select("l.fileOffset")
+      .where("l.source = :source AND l.fileOffset BETWEEN :min AND :max", { source, min: entries[0].fileOffset, max: entries[entries.length - 1].fileOffset })
+      .getMany();
+    const fresh = withoutStored(entries, rows.map((r) => r.fileOffset));
+    if (fresh.length < entries.length) {
+      this.logger.warn(`이미 저장된 ${entries.length - fresh.length}건을 건너뛰었습니다 (${source}) — 읽은 위치가 되돌아간 것으로 보입니다`);
+    }
+    return fresh;
+  }
+
   private async collect(source: LogSource) {
     const path = this.paths[source];
     const st = await stat(path).catch(() => null);
@@ -109,7 +125,10 @@ export class CollectorService implements OnModuleInit, OnModuleDestroy {
 
     const newOffset = offset + end + 1;
     const stored = await this.ds.transaction(async (m) => {
-      const result = entries.length ? await m.save(entries) : [];
+      // 읽은 위치가 되돌아가 이미 저장된 항목을 다시 읽은 경우, 중복은 건너뛰고 새 항목만 저장한다.
+      // (중복 때문에 저장 전체가 롤백되면 읽은 위치가 전진하지 못해 그 뒤의 새 로그도 저장되지 못한다.)
+      const fresh = entries.length ? await this.freshEntries(m, source, entries) : [];
+      const result = fresh.length ? await m.save(fresh) : [];
       await m.save(LogOffset, { source, offset: newOffset });
       return result;
     });

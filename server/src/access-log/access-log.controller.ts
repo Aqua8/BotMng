@@ -3,7 +3,7 @@ import { Transform, Type } from "class-transformer";
 import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Min } from "class-validator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import type { AuthUser } from "../auth/jwt.strategy";
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, resolveSort } from "../common/paging";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, resolveSort, sortErrorMessage } from "../common/paging";
 import { allowedAccessSorts, type LoginMethod } from "./access-log.view";
 import { AccessLogService } from "./access-log.service";
 
@@ -25,8 +25,9 @@ export class AccessLogController {
 
   @Get()
   list(@Query() query: ListAccessLogsQuery, @Req() req: { user: AuthUser }) {
-    const sort = resolveSort(query.sort, query.order, allowedAccessSorts(req.user.role));
-    if (!sort) throw new BadRequestException(`정렬할 수 없는 열입니다: ${query.sort}`);
+    const allowed = allowedAccessSorts(req.user.role);
+    const sort = resolveSort(query.sort, query.order, allowed);
+    if (!sort) throw new BadRequestException(sortErrorMessage(allowed));
     return this.service.list(req.user.role, { ...query, sort });
   }
 }

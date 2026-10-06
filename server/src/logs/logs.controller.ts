@@ -7,7 +7,7 @@ import { Observable, interval, map, merge, mergeMap, from as rxFrom } from "rxjs
 import { Repository, SelectQueryBuilder } from "typeorm";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import type { AuthUser } from "../auth/jwt.strategy";
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, pageOffset, resolveSort } from "../common/paging";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, pageOffset, resolveSort, sortErrorMessage } from "../common/paging";
 import { CollectorService } from "./collector.service";
 import { capRows, formatKst, toCsv } from "./csv";
 import { LogEntry } from "./log-entry.entity";
@@ -45,7 +45,7 @@ export class LogsController {
   /** 필터와 정렬을 적용한 조회. 목록과 CSV 내보내기가 똑같은 조건을 쓰도록 한 곳에 둔다. 같은 값끼리는 id 로 순서를 고정한다. */
   private filtered(query: LogFilterQuery): SelectQueryBuilder<LogEntry> {
     const sort = resolveSort(query.sort, query.order, LOG_SORTS);
-    if (!sort) throw new BadRequestException(`정렬할 수 없는 열입니다: ${query.sort}`);
+    if (!sort) throw new BadRequestException(sortErrorMessage(LOG_SORTS));
 
     const qb = this.repo.createQueryBuilder("l").orderBy(`l.${sort.column}`, sort.direction).addOrderBy("l.id", sort.direction);
     if (query.source) qb.andWhere("l.source = :source", { source: query.source });
