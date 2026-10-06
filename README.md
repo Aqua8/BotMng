@@ -9,6 +9,7 @@
 - **실시간 스트리밍**: 새 로그를 SSE로 화면에 즉시 표시 (켜기/끄기, 끊기면 자동 재연결)
 - **대시보드**: 전체/24시간/7일 건수, 마지막 로그·봇 시작 시각, 시간대별 차트, 태그별 건수
 - **인증**: JWT 로그인. 관리자(`admin`) 1개 + 읽기 전용 게스트(`guest`) 1개
+- **접속 로그**: 로그인 시도(성공/실패)의 시각, 아이디, IP, 국가, OS, 브라우저, 기기를 저장하고 화면에서 조회. 게스트에게는 IP(앞 두 칸만 표시, 예: `203.0.***.***`), User-Agent 원문, 실패한 시도의 아이디를 서버에서 가려서 내려보냄
 - **보관 정책**: 365일이 지난 로그는 매일 03:30에 자동 삭제
 - **외부 접속**: Cloudflare 프록시 → HTTPS 직접 서빙, 로그인 시도 횟수 제한
 
@@ -56,6 +57,7 @@ BotMng/
 | DB 드라이버 | mysql2 | 3.24.5 |
 | 인증 | `@nestjs/jwt` 12.0.2, `@nestjs/passport` 12.0.0, passport 0.7.0, passport-jwt 4.0.1 | |
 | 비밀번호 해시 | bcryptjs | 3.0.3 |
+| User-Agent 해석 | bowser | 2.14.1 |
 | 로그인 제한 | `@nestjs/throttler` | 6.7.1 |
 | 스케줄 | `@nestjs/schedule` | 12.0.2 |
 | 설정 | `@nestjs/config` | 12.0.1 |
@@ -94,6 +96,7 @@ ScheduleAlertBot이 출력 앞에 한국 시간과 레벨을 붙입니다. 이 �
 | GET | `/api/logs/tags` | 존재하는 태그 목록 |
 | GET | `/api/logs/stream` | 새 로그 SSE (`event: log`, 25초마다 `ping`) |
 | GET | `/api/stats` | 대시보드 통계 |
+| GET | `/api/access-logs` | 접속 로그 목록. `success`, `method`, `from`, `to`, `beforeId`, `limit`(≤200). 게스트에게는 IP 마스킹, User-Agent·실패한 시도의 아이디 제외 |
 
 `/api/logs`는 최신순이며, 응답의 `nextCursor`를 `beforeId`로 넘기면 다음 페이지를 받습니다.
 

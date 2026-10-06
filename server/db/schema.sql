@@ -35,3 +35,20 @@ CREATE TABLE IF NOT EXISTS users (
   UNIQUE KEY uq_users_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='웹 화면 로그인 계정 (서버 시작 시 .env 의 비밀번호로 admin/guest 를 맞춤)';
+
+CREATE TABLE IF NOT EXISTS access_logs (
+  id        INT          NOT NULL AUTO_INCREMENT COMMENT '접속 로그 고유 번호',
+  loggedAt  DATETIME(3)  NOT NULL COMMENT '로그인 시도 시각, 한국 시간(KST)',
+  username  VARCHAR(64)  NOT NULL COMMENT '로그인 화면에 입력한 아이디 (게스트 버튼은 guest)',
+  success   TINYINT(1)   NOT NULL COMMENT '로그인 성공 여부 (1=성공, 0=실패)',
+  method    ENUM('password','guest') NOT NULL COMMENT '로그인 방식 (password=아이디/비밀번호, guest=게스트 버튼)',
+  ip        VARCHAR(45)  NOT NULL COMMENT '접속자 IP (Cloudflare 뒤 실제 접속자 IP, IPv6 포함 최대 45자)',
+  country   VARCHAR(2)   NULL     COMMENT '접속자 국가 코드 (CF-IPCountry, 알 수 없으면 NULL)',
+  os        VARCHAR(64)  NOT NULL COMMENT '운영체제 (User-Agent 해석 결과)',
+  browser   VARCHAR(64)  NOT NULL COMMENT '웹 브라우저와 주 버전 (User-Agent 해석 결과)',
+  device    VARCHAR(16)  NOT NULL COMMENT '기기 종류 (desktop, mobile, tablet, tv, unknown)',
+  userAgent VARCHAR(512) NOT NULL COMMENT 'User-Agent 원문 (최대 512자, 관리자에게만 표시)',
+  PRIMARY KEY (id),
+  KEY idx_access_logs_logged_at (loggedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='로그인 시도(성공/실패) 접속 기록. 비밀번호는 저장하지 않음';

@@ -31,3 +31,10 @@ export function clientIp(req: { ip?: string; headers?: Record<string, string | s
   const header = Array.isArray(cf) ? cf[0] : cf;
   return header && socketIp && fromCloudflare(socketIp) ? header : socketIp;
 }
+
+/** 접속자 국가(ISO 2자리). Cloudflare 가 붙여주는 CF-IPCountry 를 같은 이유로 Cloudflare 대역에서 온 요청에서만 신뢰한다. */
+export function clientCountry(req: { ip?: string; headers?: Record<string, string | string[] | undefined> }): string | null {
+  const raw = req.headers?.["cf-ipcountry"];
+  const value = (Array.isArray(raw) ? raw[0] : raw)?.toUpperCase();
+  return value && /^[A-Z]{2}$/.test(value) && req.ip && fromCloudflare(req.ip) ? value : null;
+}

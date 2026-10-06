@@ -1,4 +1,4 @@
-import { clientIp } from "./client-ip";
+import { clientCountry, clientIp } from "./client-ip";
 
 const req = (socketIp: string, cf?: string) => ({ ip: socketIp, headers: cf ? { "cf-connecting-ip": cf } : {} });
 
@@ -18,5 +18,19 @@ describe("clientIp", () => {
 
   it("헤더가 없으면 소켓 IP를 쓴다", () => {
     expect(clientIp(req("173.245.48.10"))).toBe("173.245.48.10");
+  });
+});
+
+describe("clientCountry", () => {
+  const withCountry = (socketIp: string, country?: string) => ({ ip: socketIp, headers: country ? { "cf-ipcountry": country } : {} });
+
+  it("Cloudflare 에서 온 요청의 CF-IPCountry 를 사용한다 (대문자 2자리)", () => {
+    expect(clientCountry(withCountry("173.245.48.10", "kr"))).toBe("KR");
+  });
+
+  it("Cloudflare 가 아닌 곳에서 온 요청이나 형식이 이상한 값은 null", () => {
+    expect(clientCountry(withCountry("198.51.100.7", "KR"))).toBeNull();
+    expect(clientCountry(withCountry("173.245.48.10", "KOREA"))).toBeNull();
+    expect(clientCountry(withCountry("173.245.48.10"))).toBeNull();
   });
 });

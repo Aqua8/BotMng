@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Session, clearSession, getSession, setUnauthorizedHandler } from "./api";
+import { AccessLogs } from "./AccessLogs";
 import { Dashboard } from "./Dashboard";
 import { Login } from "./Login";
 import { Logs } from "./Logs";
 
-type Tab = "dashboard" | "logs";
+type Tab = "dashboard" | "logs" | "access";
 
 export function App() {
   const [session, setSession] = useState<Session | null>(getSession);
@@ -29,6 +30,9 @@ export function App() {
           <button className={tab === "logs" ? "active" : ""} onClick={() => setTab("logs")}>
             로그
           </button>
+          <button className={tab === "access" ? "active" : ""} onClick={() => setTab("access")}>
+            접속 로그
+          </button>
         </nav>
         <span className="spacer" />
         <span className="muted">
@@ -36,7 +40,7 @@ export function App() {
         </span>
         <button onClick={logout}>로그아웃</button>
       </header>
-      <main>{tab === "dashboard" ? <Dashboard /> : <Logs />}</main>
+      <main>{tab === "dashboard" ? <Dashboard /> : tab === "logs" ? <Logs /> : <AccessLogs />}</main>
     </>
   );
 }
