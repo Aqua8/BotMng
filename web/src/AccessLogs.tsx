@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AccessLogEntry, AccessLogFilter, fetchAccessLogs, formatTime, getSession } from "./api";
+import { AccessLogEntry, AccessLogFilter, fetchAccessLogs, formatStamp, getSession } from "./api";
 
 const DEVICE: Record<string, string> = { desktop: "PC", mobile: "모바일", tablet: "태블릿", tv: "TV", unknown: "알 수 없음" };
 
@@ -37,13 +37,22 @@ export function AccessLogs() {
 
   return (
     <>
-      <div className="filters card">
-        <select value={success} onChange={(e) => setSuccess(e.target.value)}>
+      <div className="page-head">
+        <h1>접속 로그</h1>
+        <p className="lede">
+          {isAdmin
+            ? "로그인 시도(성공과 실패)를 최신순으로 보여줍니다. 관리자에게는 모든 정보가 표시됩니다."
+            : "로그인 시도(성공과 실패)를 최신순으로 보여줍니다. IP는 앞 두 칸만, 실패한 시도의 아이디는 가려서 표시됩니다."}
+        </p>
+      </div>
+
+      <div className="toolbar">
+        <select aria-label="결과" value={success} onChange={(e) => setSuccess(e.target.value)}>
           <option value="">전체 결과</option>
           <option value="true">성공</option>
           <option value="false">실패</option>
         </select>
-        <select value={method} onChange={(e) => setMethod(e.target.value)}>
+        <select aria-label="방식" value={method} onChange={(e) => setMethod(e.target.value)}>
           <option value="">전체 방식</option>
           <option value="password">아이디/비밀번호</option>
           <option value="guest">게스트 버튼</option>
@@ -51,14 +60,11 @@ export function AccessLogs() {
         <button onClick={() => void load()} disabled={loading}>
           새로고침
         </button>
-        <span className="muted">
-          {isAdmin ? "관리자: 모든 정보가 표시됩니다" : "게스트: IP 일부와 실패한 시도의 아이디는 가려집니다"}
-        </span>
       </div>
 
       {error && <p className="error-text">{error}</p>}
 
-      <div className="card table-wrap">
+      <div className="table-wrap">
         <table className="access">
           <thead>
             <tr>
@@ -76,10 +82,13 @@ export function AccessLogs() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} title={r.userAgent ?? undefined}>
-                <td className="time">{formatTime(r.loggedAt)}</td>
+                <td className="time">{formatStamp(r.loggedAt)}</td>
                 <td>{r.username ?? <span className="muted">(가림)</span>}</td>
                 <td>
-                  <span className={`badge ${r.success ? "info" : "error"}`}>{r.success ? "성공" : "실패"}</span>
+                  <span className="result">
+                    <span className={`lamp ${r.success ? "ok" : "err"}`} aria-hidden="true" />
+                    {r.success ? "성공" : "실패"}
+                  </span>
                 </td>
                 <td>{r.method === "guest" ? "게스트 버튼" : "비밀번호"}</td>
                 <td className="mono">{r.ip}</td>
@@ -91,13 +100,10 @@ export function AccessLogs() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && !loading && <p className="muted">접속 기록이 없습니다</p>}
-        {cursor !== null && (
-          <button onClick={() => void load(cursor)} disabled={loading}>
-            더 보기
-          </button>
+        {rows.length === 0 && !loading && <p className="empty" style={{ padding: "14px 16px" }}>접속 기록이 없습니다.</p>}
+        {(cursor !== null || loading) && (
+          <div className="stream-foot">{loading ? <span className="muted">불러오는 중...</span> : <button onClick={() => void load(cursor!)}>더 보기</button>}</div>
         )}
-        {loading && <p className="muted">불러오는 중...</p>}
       </div>
     </>
   );

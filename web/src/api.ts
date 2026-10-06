@@ -149,5 +149,11 @@ export function streamLogs(onLog: (e: LogEntry) => void, onState: (connected: bo
   return () => ctrl.abort();
 }
 
+const KST = { timeZone: "Asia/Seoul" } as const;
+export const formatClock = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { ...KST, hour12: false }); // 17:24:02
+export const formatStamp = (iso: string) => new Date(iso).toLocaleString("sv-SE", KST); // 2026-10-06 17:24:02
+export const dayKey = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", KST); // 2026-10-06 (날짜 구분용)
+export const formatDay = (iso: string) => new Date(iso).toLocaleDateString("ko-KR", { ...KST, month: "long", day: "numeric", weekday: "long" });
+
 export const formatTime = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false }) : "-";

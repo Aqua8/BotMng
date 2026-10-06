@@ -18,7 +18,7 @@ export function ConsentModal({ onAgree, onDecline }: Props) {
 
   return (
     <div className="overlay" role="presentation">
-      <div className="modal card" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="consent-title">
         <h2 id="consent-title">BotMng에 오신 것을 환영합니다</h2>
         <p>
           BotMng는 개인 Discord 일정 알림 봇(ScheduleAlertBot)의 로그를 수집해 한눈에 보여 주는 관제 서비스입니다. 로그 조회·검색,

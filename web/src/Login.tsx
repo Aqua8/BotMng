@@ -28,8 +28,10 @@ export function Login({ onLogin, consented, onShowNotice }: { onLogin: (s: Sessi
   };
 
   return (
-    <form className="login card" onSubmit={submit}>
-      <h1>BotMng</h1>
+    <div className="login-wrap">
+    <form className="login" onSubmit={submit}>
+      <div className="brand">BotMng</div>
+      <p className="lede-text">일정 알림 봇의 로그를 한곳에서 봅니다.</p>
       <label>
         아이디
         <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" />
@@ -54,7 +56,8 @@ export function Login({ onLogin, consented, onShowNotice }: { onLogin: (s: Sessi
       <button type="button" disabled={!consented || busy} onClick={() => void run(loginAsGuest)}>
         게스트로 로그인
       </button>
-      <p className="muted hint">읽기 전용 게스트 계정으로 둘러볼 수 있습니다.</p>
+      <p className="hint">읽기 전용 게스트 계정으로 둘러볼 수 있습니다.</p>
     </form>
+    </div>
   );
 }
