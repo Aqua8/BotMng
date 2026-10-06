@@ -166,3 +166,7 @@ h2 { font-size: 15px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   .seg, .tagrow .fill, .rt-TableRow.fresh > td { animation: none; }
 }
+.panel-gap { margin-top: 16px; }
+.cmd-summary { margin: 0 0 12px; color: var(--muted); }
+.cmd-summary strong { color: var(--text); font-weight: 600; }
+.cmd-failed { color: var(--err); font-weight: 600; }

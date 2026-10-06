@@ -64,6 +64,25 @@ export interface Paged<T> {
   pageSize: number;
 }
 
+export interface CommandStat {
+  command: string;
+  count: number;
+  success: number;
+  failure: number;
+  cancelled: number;
+  avgMs: number | null;
+  maxMs: number | null;
+}
+export interface CommandStats {
+  days: number;
+  total: number;
+  success: number;
+  failure: number;
+  cancelled: number;
+  avgMs: number | null;
+  byCommand: CommandStat[];
+}
+
 export interface Session {
   accessToken: string;
   username: string;
@@ -140,6 +159,7 @@ export const fetchLogs = (filter: LogFilter, q: TableQuery) => get<Paged<LogEntr
 export const fetchAccessLogs = (filter: AccessLogFilter, q: TableQuery) => get<Paged<AccessLogEntry>>(`/access-logs${toQuery({ ...filter, ...q })}`);
 export const fetchTags = () => get<string[]>("/logs/tags");
 export const fetchStats = () => get<Stats>("/stats");
+export const fetchCommandStats = (days: number) => get<CommandStats>(`/stats/commands?days=${days}`);
 
 /** SSE는 EventSource가 Authorization 헤더를 못 보내므로 fetch 스트림으로 직접 파싱한다. 반환값은 중단 함수. */
 export function streamLogs(onLog: (e: LogEntry) => void, onState: (connected: boolean) => void): () => void {
