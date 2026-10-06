@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LogEntry, Stats, fetchLogs, fetchStats, formatClock, formatDay } from "./api";
+import { AccessStatsPanel } from "./AccessStatsPanel";
 import { CommandStatsPanel } from "./CommandStatsPanel";
 import { HealthPanel } from "./HealthPanel";
 import { LevelBadge } from "./components/Badges";
@@ -123,6 +124,10 @@ export function Dashboard() {
 
       <div className="panel-gap">
         <CommandStatsPanel />
+      </div>
+
+      <div className="panel-gap">
+        <AccessStatsPanel />
       </div>
     </>
   );

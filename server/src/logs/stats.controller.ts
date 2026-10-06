@@ -4,6 +4,8 @@ import { Type } from "class-transformer";
 import { IsIn, IsOptional } from "class-validator";
 import { Repository } from "typeorm";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AccessLog } from "../access-log/access-log.entity";
+import { aggregateAccessStats } from "../access-log/access-stats";
 import { aggregateCommandStats } from "./command-stats";
 import { LogEntry } from "./log-entry.entity";
 
@@ -19,7 +21,10 @@ class CommandStatsQuery {
 @UseGuards(JwtAuthGuard)
 @Controller("stats")
 export class StatsController {
-  constructor(@InjectRepository(LogEntry) private readonly repo: Repository<LogEntry>) {}
+  constructor(
+    @InjectRepository(LogEntry) private readonly repo: Repository<LogEntry>,
+    @InjectRepository(AccessLog) private readonly accessRepo: Repository<AccessLog>,
+  ) {}
 
   @Get()
   async stats() {
@@ -77,6 +82,21 @@ export class StatsController {
       .where("l.tag = 'command' AND l.loggedAt >= :since", { since })
       .getMany();
     return { days: query.days, ...aggregateCommandStats(rows) };
+  }
+
+  /**
+   * 접속 요약 (접속 수, 성공/실패, 고유 접속자, 방식별, 국가별). IP 는 개수로만 세고 응답에는 넣지 않으므로 게스트에게도 보여도 된다.
+   * days 는 명령 통계와 같은 값(1/7/30)을 쓴다.
+   */
+  @Get("access")
+  async access(@Query() query: CommandStatsQuery) {
+    const since = new Date(Date.now() - query.days * DAY_MS);
+    const rows = await this.accessRepo
+      .createQueryBuilder("a")
+      .select(["a.success", "a.method", "a.ip", "a.country"])
+      .where("a.loggedAt >= :since", { since })
+      .getMany();
+    return { days: query.days, ...aggregateAccessStats(rows) };
   }
 
   private async countByLevel(since: Date) {

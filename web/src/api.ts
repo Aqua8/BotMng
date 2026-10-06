@@ -104,6 +104,16 @@ export interface Health {
   collector: { sources: SourceStatus[] };
 }
 
+export interface AccessStats {
+  days: number;
+  total: number;
+  success: number;
+  failure: number;
+  uniqueVisitors: number;
+  byMethod: { password: number; guest: number; session: number };
+  byCountry: { country: string; count: number; failure: number }[];
+}
+
 export interface Session {
   accessToken: string;
   username: string;
@@ -180,6 +190,7 @@ export const fetchLogs = (filter: LogFilter, q: TableQuery) => get<Paged<LogEntr
 export const fetchAccessLogs = (filter: AccessLogFilter, q: TableQuery) => get<Paged<AccessLogEntry>>(`/access-logs${toQuery({ ...filter, ...q })}`);
 export const fetchTags = () => get<string[]>("/logs/tags");
 export const fetchStats = () => get<Stats>("/stats");
+export const fetchAccessStats = (days: number) => get<AccessStats>(`/stats/access?days=${days}`);
 export const fetchHealth = () => get<Health>("/health");
 export const fetchCommandStats = (days: number) => get<CommandStats>(`/stats/commands?days=${days}`);
 

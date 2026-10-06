@@ -1,14 +1,10 @@
-import { SegmentedControl, Table } from "@radix-ui/themes";
+import { Table } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { CommandStats, fetchCommandStats } from "./api";
 import { Panel } from "./components/Panel";
+import { PeriodSelect } from "./components/PeriodSelect";
 import { formatDuration } from "./lib/format-duration";
 
-const PERIODS = [
-  { days: 1, label: "24시간" },
-  { days: 7, label: "7일" },
-  { days: 30, label: "30일" },
-];
 const REFRESH_MS = 30_000;
 
 /** Discord 명령 사용 통계: 기간을 고르면 한 줄 요약과 명령별 횟수·결과·처리시간을 보여준다. */
@@ -31,18 +27,8 @@ export function CommandStatsPanel() {
     };
   }, [days]);
 
-  const period = (
-    <SegmentedControl.Root size="1" value={String(days)} onValueChange={(v) => setDays(Number(v))} aria-label="통계 기간">
-      {PERIODS.map((p) => (
-        <SegmentedControl.Item key={p.days} value={String(p.days)}>
-          {p.label}
-        </SegmentedControl.Item>
-      ))}
-    </SegmentedControl.Root>
-  );
-
   return (
-    <Panel id="commands" title="명령 사용" aside={period}>
+    <Panel id="commands" title="명령 사용" aside={<PeriodSelect days={days} onChange={setDays} />}>
       {error && <p className="error-text">{error}</p>}
       {!stats ? (
         <p className="empty">불러오는 중...</p>

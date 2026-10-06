@@ -189,3 +189,4 @@ h2 { font-size: 15px; font-weight: 600; }
 .health-issues.error { background: color-mix(in srgb, var(--err) 12%, transparent); }
 .health-foot { margin: 14px 0 0; font-size: 12px; }
 @media (max-width: 780px) { .health-grid { grid-template-columns: minmax(0, 1fr); } }
+.access-countries { margin-top: 12px; } .access-countries .tagrow { grid-template-columns: 110px minmax(0, 1fr) 90px; }
