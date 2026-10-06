@@ -36,7 +36,7 @@ export interface AccessLogEntry {
   loggedAt: string;
   username: string | null; // 게스트에게는 실패한 시도의 아이디가 null
   success: boolean;
-  method: "password" | "guest";
+  method: "password" | "guest" | "session"; // session = 저장된 로그인으로 다시 접속
   ip: string; // 게스트에게는 마지막 부분이 마스킹됨
   country: string | null;
   os: string;
@@ -47,7 +47,7 @@ export interface AccessLogEntry {
 
 export interface AccessLogFilter {
   success?: boolean;
-  method?: "password" | "guest";
+  method?: "password" | "guest" | "session";
 }
 
 export type SortOrder = "asc" | "desc";
@@ -114,6 +114,19 @@ export async function loginAsGuest(): Promise<Session> {
   const res = await fetch("/api/auth/guest", { method: "POST" });
   if (!res.ok) throw new Error(res.status === 429 ? "시도가 너무 많습니다. 잠시 후 다시 시도해 주세요" : `게스트 로그인 실패 (${res.status})`);
   return res.json();
+}
+
+/**
+ * 저장된 로그인으로 화면을 열었음을 서버에 알린다 (접속 로그에 "저장된 로그인"으로 기록, 같은 접속자는 1시간에 한 번만).
+ * 토큰 검증도 겸한다: 만료됐으면 로그인 화면으로 돌아가고, 그 밖의 오류(횟수 제한, 네트워크 등)는 무시한다.
+ */
+export async function resumeSession(): Promise<void> {
+  try {
+    const res = await fetch("/api/auth/resume", { method: "POST", headers: authHeader() });
+    if (res.status === 401) onUnauthorized();
+  } catch {
+    /* 기록 실패가 화면 사용을 막으면 안 된다 */
+  }
 }
 
 const toQuery = (params: Record<string, string | number | boolean | undefined>) => {

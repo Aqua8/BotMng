@@ -10,7 +10,7 @@
 - **대시보드**: 최근 24시간 한 줄 요약(에러 기준), 마지막 로그·봇 시작 시각, 시간대별 로그 양과 봇의 예약 발송 시각을 한 띠에 보여주는 "하루 시계", 태그별 건수, 최근 경고·에러
 - **인증**: JWT 로그인. 관리자(`admin`) 1개 + 읽기 전용 게스트(`guest`) 1개. 로그인 화면의 **"게스트로 로그인" 버튼**으로 비밀번호 없이 게스트로 들어갈 수 있음
 - **다크/라이트 테마**: 사이드바와 로그인 화면의 해/달 버튼으로 전환. 처음에는 시스템 설정을 따르고, 토글하면 선택을 브라우저(localStorage)에 계속 저장
-- **접속 로그**: 로그인 시도(성공/실패)의 시각, 아이디, IP, 국가, OS, 브라우저, 기기를 저장하고 화면에서 조회. 게스트에게는 IP(앞 두 칸만 표시, 예: `203.0.***.***`), User-Agent 원문, 실패한 시도의 아이디를 서버에서 가려서 내려보냄
+- **접속 로그**: 로그인 시도(성공/실패)와, 저장된 로그인으로 화면을 다시 연 재접속(같은 접속자는 1시간에 한 번만)의 시각, 아이디, IP, 국가, OS, 브라우저, 기기를 저장하고 화면에서 조회. 게스트에게는 IP(앞 두 칸만 표시, 예: `203.0.***.***`), User-Agent 원문, 실패한 시도의 아이디를 서버에서 가려서 내려보냄
 - **접속 안내·동의 모달**: 접속하면 서비스 소개와 접속 정보 수집 안내 모달을 띄우고, 동의해야 로그인/게스트 버튼을 쓸 수 있음. "24시간 동안 보지 않기"를 체크하고 동의하면 브라우저에 24시간(localStorage), 체크 없이 동의하면 탭을 닫을 때까지(sessionStorage) 기억하며, 동의가 없으면 다시 모달을 띄움 (동의 여부는 화면에서만 막고 서버가 검증하지는 않음)
 - **보관 정책**: 365일이 지난 봇 로그는 매일 03:30에, 접속 로그는 매일 03:40에 자동 삭제
 - **외부 접속**: Cloudflare 프록시 → HTTPS 직접 서빙, 로그인 시도 횟수 제한
@@ -110,13 +110,14 @@ ScheduleAlertBot이 출력 앞에 한국 시간과 레벨을 붙입니다. 이 �
 | 메서드 | 경로 | 설명 |
 |---|---|---|
 | POST | `/api/auth/login` | 로그인 → JWT (12시간). IP당 분당 10회 제한 |
+| POST | `/api/auth/resume` | 저장된 로그인으로 화면을 열었음을 알림 → 접속 로그에 `session`으로 기록(같은 계정·IP·브라우저의 성공 기록이 1시간 안에 있으면 생략). 토큰 검증도 겸함(만료면 401). IP당 분당 10회 제한 |
 | POST | `/api/auth/guest` | 게스트 버튼. 비밀번호 없이 읽기 전용 게스트 토큰 발급. IP당 분당 10회 제한(로그인과 별도 집계) |
 | GET | `/api/auth/me` | 현재 사용자 |
 | GET | `/api/logs` | 목록. `source`, `level`, `tag`, `q`, `from`, `to` 필터 + `page`, `pageSize`(5/10/20/50/100, 기본 20), `sort`(`loggedAt`/`level`/`source`/`tag`/`outcome`/`durationMs`), `order`(`asc`/`desc`). 응답 `{ items, total, page, pageSize }` |
 | GET | `/api/logs/tags` | 존재하는 태그 목록 |
 | GET | `/api/logs/stream` | 새 로그 SSE (`event: log`, 25초마다 `ping`) |
 | GET | `/api/stats` | 대시보드 통계 |
-| GET | `/api/access-logs` | 접속 로그 목록. `success`, `method`, `from`, `to` 필터 + `page`, `pageSize`, `sort`(`loggedAt`/`username`/`success`/`method`/`ip`/`country`/`os`/`browser`/`device`), `order`. 게스트에게는 IP 마스킹, User-Agent·실패한 시도의 아이디 제외, `ip`·`username` 정렬은 400 |
+| GET | `/api/access-logs` | 접속 로그 목록. `success`, `method`(`password`/`guest`/`session`), `from`, `to` 필터 + `page`, `pageSize`, `sort`(`loggedAt`/`username`/`success`/`method`/`ip`/`country`/`os`/`browser`/`device`), `order`. 게스트에게는 IP 마스킹, User-Agent·실패한 시도의 아이디 제외, `ip`·`username` 정렬은 400 |
 
 목록은 기본이 시각 내림차순(최신순)이고, 정렬 열은 서버가 허용한 이름만 받으며 같은 값끼리는 `id`로 순서를 고정합니다. 게스트가 가려진 값(IP, 계정)으로 정렬하면 순서로 숨긴 값을 유추할 수 있어 막았습니다.
 

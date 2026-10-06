@@ -40,6 +40,16 @@ describe("toView (역할별 마스킹)", () => {
 });
 });
 
+describe("method=session (저장된 로그인으로 다시 접속)", () => {
+  it("관리자·게스트 모두 방식이 그대로 보이고, 성공한 기록이라 게스트에게도 계정이 보인다", () => {
+    expect(toView(log({ method: "session" }), "admin").method).toBe("session");
+    const g = toView(log({ method: "session", success: true }), "guest");
+    expect(g.method).toBe("session");
+    expect(g.username).toBe("admin");
+    expect(g.ip).toBe("203.0.***.***");
+  });
+});
+
 describe("allowedAccessSorts (게스트의 정렬 제한)", () => {
   it("관리자는 모든 열로 정렬할 수 있다", () => {
     const admin = allowedAccessSorts("admin");

@@ -7,6 +7,7 @@ import { PageHead } from "./components/PageHead";
 import { DEFAULT_SORT, nextSort, useTableQuery } from "./hooks/useTableQuery";
 import { useState } from "react";
 
+const METHOD: Record<string, string> = { password: "비밀번호", guest: "게스트 버튼", session: "저장된 로그인" };
 const DEVICE: Record<string, string> = { desktop: "PC", mobile: "모바일", tablet: "태블릿", tv: "TV", unknown: "알 수 없음" };
 
 /** 게스트에게는 IP와 계정이 가려져 있으므로 이 두 열은 정렬할 수 없다 (서버도 400으로 거부한다). */
@@ -14,7 +15,7 @@ const buildColumns = (isAdmin: boolean): Column<AccessLogEntry>[] => [
   { key: "time", header: "시각", sortKey: "loggedAt", className: "nowrap muted", cell: (r) => formatStamp(r.loggedAt) },
   { key: "user", header: "계정", sortKey: isAdmin ? "username" : undefined, cell: (r) => r.username ?? <span className="muted">(가림)</span> },
   { key: "result", header: "결과", sortKey: "success", cell: (r) => <ResultBadge success={r.success} /> },
-  { key: "method", header: "방식", sortKey: "method", className: "nowrap", cell: (r) => (r.method === "guest" ? "게스트 버튼" : "비밀번호") },
+  { key: "method", header: "방식", sortKey: "method", className: "nowrap", cell: (r) => METHOD[r.method] ?? r.method },
   { key: "ip", header: "IP", sortKey: isAdmin ? "ip" : undefined, className: "mono nowrap", cell: (r) => r.ip },
   { key: "country", header: "국가", sortKey: "country", cell: (r) => r.country ?? "-" },
   { key: "os", header: "OS", sortKey: "os", className: "nowrap", cell: (r) => r.os },
@@ -47,7 +48,7 @@ export function AccessLogs() {
 
       <Flex wrap="wrap" align="center" gap="2" mb="3">
         <FilterSelect label="결과" allLabel="전체 결과" value={success} onChange={setSuccess} options={[{ value: "true", label: "성공" }, { value: "false", label: "실패" }]} />
-        <FilterSelect label="방식" allLabel="전체 방식" value={method} onChange={setMethod} options={[{ value: "password", label: "아이디/비밀번호" }, { value: "guest", label: "게스트 버튼" }]} />
+        <FilterSelect label="방식" allLabel="전체 방식" value={method} onChange={setMethod} options={[{ value: "password", label: "아이디/비밀번호" }, { value: "guest", label: "게스트 버튼" }, { value: "session", label: "저장된 로그인" }]} />
         <Button variant="soft" color="gray" onClick={tq.reload} disabled={tq.loading}>
           새로고침
         </Button>
