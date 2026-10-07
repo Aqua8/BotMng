@@ -8,8 +8,7 @@ import { AccessLogs } from "./AccessLogs";
 import { Dashboard } from "./Dashboard";
 import { Login } from "./Login";
 import { Logs } from "./Logs";
-
-type Tab = "dashboard" | "logs" | "access";
+import { activeTabFor, tabsFor, type Tab } from "./lib/tabs";
 
 export function App() {
   const [session, setSession] = useState<Session | null>(getSession);
@@ -63,11 +62,8 @@ export function App() {
     );
   }
 
-  const items: { id: Tab; label: string }[] = [
-    { id: "dashboard", label: "대시보드" },
-    { id: "logs", label: "로그" },
-    { id: "access", label: "접속 로그" },
-  ];
+  const items = tabsFor(session.role);
+  const current = activeTabFor(tab, session.role);
 
   return (
     <>
@@ -76,7 +72,7 @@ export function App() {
           <div className="brand">BotMng</div>
           <nav className="nav" aria-label="메뉴">
             {items.map((it) => (
-              <button key={it.id} className={`nav-item${tab === it.id ? " active" : ""}`} aria-current={tab === it.id ? "page" : undefined} onClick={() => setTab(it.id)}>
+              <button key={it.id} className={`nav-item${current === it.id ? " active" : ""}`} aria-current={current === it.id ? "page" : undefined} onClick={() => setTab(it.id)}>
                 {it.label}
               </button>
             ))}
@@ -94,7 +90,7 @@ export function App() {
             </div>
           </div>
         </aside>
-        <main className="content">{tab === "dashboard" ? <Dashboard /> : tab === "logs" ? <Logs /> : <AccessLogs />}</main>
+        <main className="content">{current === "dashboard" ? <Dashboard /> : current === "logs" ? <Logs /> : <AccessLogs />}</main>
       </div>
       {modal}
     </>

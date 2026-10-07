@@ -1,10 +1,10 @@
-import { BadRequestException, Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Controller, ForbiddenException, Get, Query, Req, UseGuards } from "@nestjs/common";
 import { Transform, Type } from "class-transformer";
 import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Min } from "class-validator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import type { AuthUser } from "../auth/jwt.strategy";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, resolveSort, sortErrorMessage } from "../common/paging";
-import { allowedAccessSorts, type LoginMethod } from "./access-log.view";
+import { allowedAccessSorts, canViewAccessLogs, type LoginMethod } from "./access-log.view";
 import { AccessLogService } from "./access-log.service";
 
 class ListAccessLogsQuery {
@@ -25,6 +25,7 @@ export class AccessLogController {
 
   @Get()
   list(@Query() query: ListAccessLogsQuery, @Req() req: { user: AuthUser }) {
+    if (!canViewAccessLogs(req.user.role)) throw new ForbiddenException("접속 로그는 관리자만 볼 수 있습니다");
     const allowed = allowedAccessSorts(req.user.role);
     const sort = resolveSort(query.sort, query.order, allowed);
     if (!sort) throw new BadRequestException(sortErrorMessage(allowed));

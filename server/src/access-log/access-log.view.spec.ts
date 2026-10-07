@@ -1,4 +1,4 @@
-import { AccessLogRow, allowedAccessSorts, hiddenMethods, toView } from "./access-log.view";
+import { AccessLogRow, allowedAccessSorts, canViewAccessLogs, hiddenMethods, toView } from "./access-log.view";
 
 const log = (over: Partial<AccessLogRow> = {}): AccessLogRow => ({
     id: 1,
@@ -71,5 +71,16 @@ describe("hiddenMethods (서비스 계정 접속 기록 숨김)", () => {
 
   it("게스트에게는 서비스 계정의 접속 기록을 숨긴다", () => {
     expect(hiddenMethods("guest")).toEqual(["service"]);
+  });
+});
+
+describe("canViewAccessLogs (접속 로그는 관리자만)", () => {
+  it("관리자만 볼 수 있다", () => {
+    expect(canViewAccessLogs("admin")).toBe(true);
+  });
+
+  it("게스트와 서비스 계정은 볼 수 없다 (방문자의 IP·국가·브라우저가 다른 방문자에게 보이지 않게)", () => {
+    expect(canViewAccessLogs("guest")).toBe(false);
+    expect(canViewAccessLogs("service")).toBe(false);
   });
 });

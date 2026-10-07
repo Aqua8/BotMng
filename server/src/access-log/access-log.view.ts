@@ -7,6 +7,9 @@ export type LoginMethod = "password" | "guest" | "session" | "service"; // sessi
 export const RESUME_DEDUPE_MS = 60 * 60 * 1000;
 export type ViewerRole = Role; // admin 이 아니면(guest, service) 가려서 보여준다
 
+/** 접속 로그 목록(방문자의 IP, 국가, 브라우저 등)은 관리자만 볼 수 있다. 게스트와 서비스 계정은 볼 수 없다. */
+export const canViewAccessLogs = (role: ViewerRole): boolean => role === "admin";
+
 /** 이 역할에게 숨길 접속 방식. 서비스 계정의 접속 기록은 관리자에게만 보인다. */
 export const hiddenMethods = (role: ViewerRole): LoginMethod[] => (role === "admin" ? [] : ["service"]);
 
