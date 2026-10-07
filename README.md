@@ -171,9 +171,19 @@ mariadb -ubotmng -p botmng < server/db/schema.sql
 | `DB_HOST` `DB_PORT` `DB_USER` `DB_PASSWORD` `DB_NAME` | MariaDB 접속 정보 |
 | `BOT_OUT_LOG` `BOT_ERROR_LOG` | 봇 로그 파일의 절대 경로 |
 | `JWT_SECRET` | JWT 서명 키 (충분히 긴 랜덤 값) |
-| `ADMIN_PASSWORD` `GUEST_PASSWORD` | `admin` / `guest` 비밀번호. 바꾸고 재시작하면 반영 |
-| `DEVMNG_PASSWORD` | (선택) 서비스 계정 `devmng` 비밀번호. 설정하면 계정을 만들고, 비우면 서비스 계정을 지움. 화면 로그인은 항상 막혀 있고 `/api/auth/service`로만 토큰을 받음 |
+| `ADMIN_PASSWORD` `GUEST_PASSWORD` | `admin` / `guest` 비밀번호. 바꾸고 재시작하면 반영. **계정마다 서로 다른 12자 이상** 값만 허용(아래 "비밀번호 정책") |
+| `DEVMNG_PASSWORD` | (선택) 서비스 계정 `devmng` 비밀번호. 같은 정책을 적용한다. 설정하면 계정을 만들고, 비우면 서비스 계정을 지움. 화면 로그인은 항상 막혀 있고 `/api/auth/service`로만 토큰을 받음 |
 | `TLS_CERT_PATH` `TLS_KEY_PATH` | (선택) 설정하면 `0.0.0.0`으로 HTTPS 서빙, 비우면 `127.0.0.1` HTTP |
+
+### 비밀번호 정책
+
+서버는 시작할 때 `ADMIN_PASSWORD`, `GUEST_PASSWORD`, `DEVMNG_PASSWORD`를 점검하고, 아래를 어기면 **계정을 하나도 바꾸지 않고 시작을 거부**합니다. 오류 메시지에는 어떤 변수가 왜 문제인지만 나오고 비밀번호 값은 나오지 않습니다.
+
+- 12자 이상, 앞뒤 공백 없음, 서로 다른 문자 6개 이상, 72바이트 이하(bcrypt가 그 뒤를 잘라 비교하므로)
+- **계정끼리 같은 값 금지**: 서비스 비밀번호가 알려질 때 관리자 로그인까지 뚫리는 일을 막습니다.
+- 값이 공백뿐이면 "없음"이 아니라 약한 값으로 보고 거부합니다. `DEVMNG_PASSWORD`를 비우면(빈 문자열) 서비스 계정을 쓰지 않는 것으로 봅니다.
+
+무작위 값 만들기: `openssl rand -base64 24` (값에 `#`이 들어 있으면 `.env`에서 큰따옴표로 감쌉니다).
 
 ### 3. 빌드와 실행
 

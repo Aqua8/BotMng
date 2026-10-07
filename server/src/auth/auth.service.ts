@@ -4,6 +4,7 @@ import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { compare, hash } from "bcryptjs";
 import { Repository } from "typeorm";
+import { checkSeedPasswords, passwordPolicyMessage } from "./password-policy";
 import { Role, User } from "./user.entity";
 
 export const SERVICE_USERNAME = "devmng";
@@ -22,13 +23,19 @@ export class AuthService implements OnApplicationBootstrap {
   /**
    * 관리자/게스트 계정을 .env 비밀번호 기준으로 맞춘다. 비밀번호를 바꾸고 재시작하면 반영된다.
    * 서비스 계정은 DEVMNG_PASSWORD 가 있을 때만 만들고, 비워 두면 기존 서비스 계정을 지운다.
+   * 비밀번호가 짧거나 계정끼리 같으면(password-policy.ts) 아무것도 바꾸지 않고 서버 시작을 거부한다.
    */
   async onApplicationBootstrap() {
-    const seeds: [string, string, Role][] = [
-      ["admin", this.config.getOrThrow("ADMIN_PASSWORD"), "admin"],
-      ["guest", this.config.getOrThrow("GUEST_PASSWORD"), "guest"],
-    ];
+    const adminPassword = this.config.getOrThrow<string>("ADMIN_PASSWORD");
+    const guestPassword = this.config.getOrThrow<string>("GUEST_PASSWORD");
     const servicePassword = this.config.get<string>("DEVMNG_PASSWORD");
+    const problems = checkSeedPasswords({ ADMIN_PASSWORD: adminPassword, GUEST_PASSWORD: guestPassword, DEVMNG_PASSWORD: servicePassword });
+    if (problems.length) throw new Error(passwordPolicyMessage(problems));
+
+    const seeds: [string, string, Role][] = [
+      ["admin", adminPassword, "admin"],
+      ["guest", guestPassword, "guest"],
+    ];
     if (servicePassword) seeds.push([SERVICE_USERNAME, servicePassword, "service"]);
     else await this.users.delete({ role: "service" });
     for (const [username, password, role] of seeds) {
