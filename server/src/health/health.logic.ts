@@ -1,4 +1,13 @@
 /** 시스템 상태 판정 로직. Nest 에 의존하지 않는 순수 함수라 단위 테스트가 쉽다. */
+import { In, Not } from "typeorm";
+import { hiddenMethods } from "../access-log/access-log.view";
+import type { Role } from "../auth/user.entity";
+
+/** accessLogCount 에서 그 역할에게 숨길 접속 방식의 행을 뺀다. 관리자는 모두 센다. */
+export const accessLogFilter = (role: Role) => {
+  const hidden = hiddenMethods(role);
+  return hidden.length ? { method: Not(In(hidden)) } : {};
+};
 
 export type HealthLevel = "ok" | "warn" | "error";
 
