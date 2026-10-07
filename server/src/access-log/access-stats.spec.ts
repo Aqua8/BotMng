@@ -5,7 +5,7 @@ const row = (over: Partial<Row> = {}): Row => ({ success: true, method: "passwor
 
 describe("aggregateAccessStats", () => {
   it("비어 있으면 모두 0", () => {
-    expect(aggregateAccessStats([])).toEqual({ total: 0, success: 0, failure: 0, uniqueVisitors: 0, byMethod: { password: 0, guest: 0, session: 0 }, byCountry: [] });
+    expect(aggregateAccessStats([])).toEqual({ total: 0, success: 0, failure: 0, uniqueVisitors: 0, byMethod: { password: 0, guest: 0, session: 0, service: 0 }, byCountry: [] });
   });
 
   it("전체·성공·실패와 방식별로 센다", () => {

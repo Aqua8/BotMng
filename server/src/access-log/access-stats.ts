@@ -23,7 +23,7 @@ const UNKNOWN = "??";
 
 /** 접속 로그 행들을 요약한다. IP 같은 개인 식별 값은 결과에 넣지 않고 개수만 센다. */
 export function aggregateAccessStats(rows: AccessRow[]): AccessStats {
-  const byMethod: Record<LoginMethod, number> = { password: 0, guest: 0, session: 0 };
+  const byMethod: Record<LoginMethod, number> = { password: 0, guest: 0, session: 0, service: 0 };
   const countries = new Map<string, { count: number; failure: number }>();
   const visitors = new Set<string>();
   let success = 0;

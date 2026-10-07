@@ -1,10 +1,14 @@
+import type { Role } from "../auth/user.entity";
 import { maskIp } from "./access-log.util";
 
-export type LoginMethod = "password" | "guest" | "session"; // session = 저장된 로그인으로 화면을 다시 연 경우
+export type LoginMethod = "password" | "guest" | "session" | "service"; // session = 저장된 로그인으로 화면을 다시 연 경우, service = 외부 서비스 계정의 토큰 발급
 
 /** 같은 계정·IP·브라우저의 성공 기록이 이 시간 안에 있으면 재접속을 다시 기록하지 않는다 */
 export const RESUME_DEDUPE_MS = 60 * 60 * 1000;
-export type ViewerRole = "admin" | "guest";
+export type ViewerRole = Role; // admin 이 아니면(guest, service) 가려서 보여준다
+
+/** 이 역할에게 숨길 접속 방식. 서비스 계정의 접속 기록은 관리자에게만 보인다. */
+export const hiddenMethods = (role: ViewerRole): LoginMethod[] => (role === "admin" ? [] : ["service"]);
 
 /** access_logs 한 행 (엔티티와 같은 모양. Nest/TypeORM 에 의존하지 않아 단위 테스트가 쉽다) */
 export interface AccessLogRow {

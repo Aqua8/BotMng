@@ -8,7 +8,7 @@
 - **로그 조회**: **CSV 내보내기**(관리자만, 현재 필터·정렬 기준, 최대 5만 건), 행을 누르면 전체 메시지를 대화상자로 보고 복사, 빠른 기간 선택(최근 1시간/오늘/24시간/7일, 한국 시간 기준 — 접속 로그에도 있음), 파일(out/error), 레벨(info/warn/error), 태그, 메시지 검색, 기간 필터, 번호 페이지네이션(5/10/20/50/100건, 기본 20건, 총 건수 표시)과 열 정렬. 실시간은 최신순 1페이지에서만 반영하고 페이지·정렬을 바꾸면 자동으로 꺼짐
 - **실시간 스트리밍**: 새 로그를 SSE로 화면에 즉시 표시 (켜기/끄기, 끊기면 자동 재연결)
 - **대시보드**: **시스템 상태**(DB 연결·응답 시간·로그 건수·크기, 수집기의 읽은 위치·지연·마지막 확인·마지막 오류), 최근 24시간 한 줄 요약(에러 기준), **접속 요약**(접속 수·성공/실패·고유 접속자·방식별·국가별), **Discord 명령 사용 통계**(기간 24시간/7일/30일 선택, 사용 횟수·실패율·평균 처리시간과 명령별 횟수/성공/실패/취소/평균/최대), 마지막 로그·봇 시작 시각, 시간대별 로그 양과 봇의 예약 발송 시각을 한 띠에 보여주는 "하루 시계", 태그별 건수, 최근 경고·에러
-- **인증**: JWT 로그인. 관리자(`admin`) 1개 + 읽기 전용 게스트(`guest`) 1개. 로그인 화면의 **"게스트로 로그인" 버튼**으로 비밀번호 없이 게스트로 들어갈 수 있음
+- **인증**: JWT 로그인. 관리자(`admin`) 1개 + 읽기 전용 게스트(`guest`) 1개. 로그인 화면의 **"게스트로 로그인" 버튼**으로 비밀번호 없이 게스트로 들어갈 수 있음. 외부 서비스용 **서비스 계정**(`devmng`, 선택)은 화면 로그인이 막혀 있고 `/api/health` 조회만 가능하며, 접속 기록은 관리자에게만 보임
 - **다크/라이트 테마**: 사이드바와 로그인 화면의 해/달 버튼으로 전환. 처음에는 시스템 설정을 따르고, 토글하면 선택을 브라우저(localStorage)에 계속 저장
 - **접속 로그**: 로그인 시도(성공/실패)와, 저장된 로그인으로 화면을 다시 연 재접속(같은 접속자는 1시간에 한 번만)의 시각, 아이디, IP, 국가, OS, 브라우저, 기기를 저장하고 화면에서 조회. 게스트에게는 IP(앞 두 칸만 표시, 예: `203.0.***.***`), User-Agent 원문, 실패한 시도의 아이디를 서버에서 가려서 내려보냄
 - **접속 안내·동의 모달**: 접속하면 서비스 소개와 접속 정보 수집 안내 모달을 띄우고, 동의해야 로그인/게스트 버튼을 쓸 수 있음. "24시간 동안 보지 않기"를 체크하고 동의하면 브라우저에 24시간(localStorage), 체크 없이 동의하면 탭을 닫을 때까지(sessionStorage) 기억하며, 동의가 없으면 다시 모달을 띄움 (동의 여부는 화면에서만 막고 서버가 검증하지는 않음)
@@ -115,6 +115,7 @@ ScheduleAlertBot이 출력 앞에 한국 시간과 레벨을 붙입니다. 이 �
 |---|---|---|
 | POST | `/api/auth/login` | 로그인 → JWT (12시간). IP당 분당 10회 제한 |
 | POST | `/api/auth/resume` | 저장된 로그인으로 화면을 열었음을 알림 → 접속 로그에 `session`으로 기록(같은 계정·IP·브라우저의 성공 기록이 1시간 안에 있으면 생략). 토큰 검증도 겸함(만료면 401). IP당 분당 10회 제한 |
+| POST | `/api/auth/service` | 서비스 계정(`devmng`) 전용 토큰 발급. 본문 `{ password }`, 토큰은 15분 유효. `DEVMNG_PASSWORD`를 설정했을 때만 동작. 이 토큰은 `/api/health` 외 API에서 403. 접속 로그에 `service`로 기록(관리자에게만 보임). IP당 분당 10회 제한(로그인과 같은 집계) |
 | POST | `/api/auth/guest` | 게스트 버튼. 비밀번호 없이 읽기 전용 게스트 토큰 발급. IP당 분당 10회 제한(로그인과 별도 집계) |
 | GET | `/api/auth/me` | 현재 사용자 |
 | GET | `/api/logs` | 목록. `source`, `level`, `tag`, `q`, `from`, `to` 필터 + `page`, `pageSize`(5/10/20/50/100, 기본 20), `sort`(`loggedAt`/`level`/`source`/`tag`/`outcome`/`durationMs`), `order`(`asc`/`desc`). 응답 `{ items, total, page, pageSize }` |
@@ -123,9 +124,9 @@ ScheduleAlertBot이 출력 앞에 한국 시간과 레벨을 붙입니다. 이 �
 | GET | `/api/logs/stream` | 새 로그 SSE (`event: log`, 25초마다 `ping`) |
 | GET | `/api/health` | DB와 로그 수집기 상태. `status`(ok/warn/error)와 `issues`, DB(응답 시간, 건수, 크기), 파일별 수집 상태. DB가 죽어도 응답함(JWT 인증은 DB를 쓰지 않음). 로컬 파일 경로·오류 메시지는 포함하지 않고 오류는 종류 이름만 |
 | GET | `/api/stats` | 대시보드 통계 |
-| GET | `/api/stats/access` | 접속 요약. `days`(1/7/30, 기본 7). 접속 수, 성공/실패, 고유 접속자(성공한 접속의 서로 다른 IP 수), 방식별, 국가별 상위 8개. IP는 개수로만 세고 응답에 넣지 않으므로 게스트도 조회 가능 |
+| GET | `/api/stats/access` | 접속 요약. `days`(1/7/30, 기본 7). 접속 수, 성공/실패, 고유 접속자(성공한 접속의 서로 다른 IP 수), 방식별, 국가별 상위 8개. IP는 개수로만 세고 응답에 넣지 않으므로 게스트도 조회 가능. 서비스 계정의 접속은 사람의 접속이 아니므로 제외 |
 | GET | `/api/stats/commands` | Discord 명령 사용 통계. `days`(1/7/30, 기본 7). 응답 `{ days, total, success, failure, cancelled, avgMs, byCommand }`. `/비서`는 해석된 동작별(`/비서(일정삭제)`)로 따로 집계. 게스트도 조회 가능 |
-| GET | `/api/access-logs` | 접속 로그 목록. `success`, `method`(`password`/`guest`/`session`), `from`, `to` 필터 + `page`, `pageSize`, `sort`(`loggedAt`/`username`/`success`/`method`/`ip`/`country`/`os`/`browser`/`device`), `order`. 게스트에게는 IP 마스킹, User-Agent·실패한 시도의 아이디 제외, `ip`·`username` 정렬은 400 |
+| GET | `/api/access-logs` | 접속 로그 목록. `success`, `method`(`password`/`guest`/`session`/`service`), `from`, `to` 필터 + `page`, `pageSize`, `sort`(`loggedAt`/`username`/`success`/`method`/`ip`/`country`/`os`/`browser`/`device`), `order`. 게스트에게는 IP 마스킹, User-Agent·실패한 시도의 아이디 제외, `ip`·`username` 정렬은 400 |
 
 목록은 기본이 시각 내림차순(최신순)이고, 정렬 열은 서버가 허용한 이름만 받으며 같은 값끼리는 `id`로 순서를 고정합니다. 게스트가 가려진 값(IP, 계정)으로 정렬하면 순서로 숨긴 값을 유추할 수 있어 막았습니다.
 
@@ -158,7 +159,7 @@ MySQL Workbench 같은 도구도 같은 서버에서 `127.0.0.1:3306`으로 접�
 mariadb -ubotmng -p botmng < server/db/schema.sql
 ```
 
-스키마를 바꿀 때는 `server/db/schema.sql`과 `server/src`의 엔티티를 함께 고치고 DB에도 직접 반영합니다. 모든 테이블과 컬럼에는 `COMMENT`(설명)가 달려 있어 Workbench 등에서 바로 확인할 수 있습니다.
+스키마를 바꿀 때는 `server/db/schema.sql`과 `server/src`의 엔티티를 함께 고치고 DB에도 직접 반영합니다. 서비스 계정을 추가하려면 기존 DB에 `ALTER TABLE users MODIFY role ENUM('admin','guest','service') NOT NULL;`과 `ALTER TABLE access_logs MODIFY method ENUM('password','guest','session','service') NOT NULL;`을 먼저 실행해야 합니다(COMMENT는 `schema.sql` 참고). 모든 테이블과 컬럼에는 `COMMENT`(설명)가 달려 있어 Workbench 등에서 바로 확인할 수 있습니다.
 
 ### 2. 환경 변수
 
@@ -171,6 +172,7 @@ mariadb -ubotmng -p botmng < server/db/schema.sql
 | `BOT_OUT_LOG` `BOT_ERROR_LOG` | 봇 로그 파일의 절대 경로 |
 | `JWT_SECRET` | JWT 서명 키 (충분히 긴 랜덤 값) |
 | `ADMIN_PASSWORD` `GUEST_PASSWORD` | `admin` / `guest` 비밀번호. 바꾸고 재시작하면 반영 |
+| `DEVMNG_PASSWORD` | (선택) 서비스 계정 `devmng` 비밀번호. 설정하면 계정을 만들고, 비우면 서비스 계정을 지움. 화면 로그인은 항상 막혀 있고 `/api/auth/service`로만 토큰을 받음 |
 | `TLS_CERT_PATH` `TLS_KEY_PATH` | (선택) 설정하면 `0.0.0.0`으로 HTTPS 서빙, 비우면 `127.0.0.1` HTTP |
 
 ### 3. 빌드와 실행

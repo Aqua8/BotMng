@@ -7,7 +7,7 @@ import type { Role } from "../auth/user.entity";
 import { AccessLog } from "./access-log.entity";
 import { Sort, pageOffset } from "../common/paging";
 import { parseUserAgent } from "./access-log.util";
-import { LoginMethod, RESUME_DEDUPE_MS, toView } from "./access-log.view";
+import { LoginMethod, RESUME_DEDUPE_MS, hiddenMethods, toView } from "./access-log.view";
 
 const RETENTION_DAYS = 365;
 
@@ -56,6 +56,8 @@ export class AccessLogService {
   /** 페이지 단위 목록. 정렬 열은 호출한 쪽에서 허용 목록으로 검증한 값이어야 한다. 같은 값끼리는 id 로 순서를 고정한다. */
   async list(role: Role, q: { success?: boolean; method?: LoginMethod; from?: string; to?: string; page: number; pageSize: number; sort: Sort }) {
     const qb = this.repo.createQueryBuilder("a").orderBy(`a.${q.sort.column}`, q.sort.direction).addOrderBy("a.id", q.sort.direction).skip(pageOffset(q.page, q.pageSize)).take(q.pageSize);
+    const hidden = hiddenMethods(role);
+    if (hidden.length) qb.andWhere("a.method NOT IN (:...hidden)", { hidden });
     if (q.success !== undefined) qb.andWhere("a.success = :success", { success: q.success });
     if (q.method) qb.andWhere("a.method = :method", { method: q.method });
     if (q.from) qb.andWhere("a.loggedAt >= :from", { from: new Date(q.from) });

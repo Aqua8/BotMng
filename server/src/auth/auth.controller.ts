@@ -2,12 +2,16 @@ import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from "@nestjs/c
 import { IsString, MaxLength } from "class-validator";
 import { AccessLogService } from "../access-log/access-log.service";
 import { LoginThrottlerGuard } from "./login-throttler.guard";
-import { AuthService } from "./auth.service";
+import { AuthService, SERVICE_USERNAME } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AuthUser } from "./jwt.strategy";
 
 class LoginDto {
   @IsString() @MaxLength(64) username: string;
+  @IsString() @MaxLength(128) password: string;
+}
+
+class ServiceLoginDto {
   @IsString() @MaxLength(128) password: string;
 }
 
@@ -43,6 +47,21 @@ export class AuthController {
       return result;
     } catch (err) {
       await this.accessLog.record(req, "guest", false, "guest");
+      throw err;
+    }
+  }
+
+  /** 서비스 계정(DevMng) 전용. 화면 로그인은 막혀 있고 이 경로로만 토큰을 받는다. 같은 횟수 제한과 접속 로그(관리자에게만 보임)가 적용된다. */
+  @UseGuards(LoginThrottlerGuard)
+  @Post("service")
+  @HttpCode(200)
+  async service(@Body() dto: ServiceLoginDto, @Req() req: { ip?: string; headers: Record<string, string | string[] | undefined> }) {
+    try {
+      const result = await this.auth.loginAsService(dto.password);
+      await this.accessLog.record(req, SERVICE_USERNAME, true, "service");
+      return result;
+    } catch (err) {
+      await this.accessLog.record(req, SERVICE_USERNAME, false, "service");
       throw err;
     }
   }

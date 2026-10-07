@@ -17,7 +17,7 @@ export class AccessLog {
   @Column({ type: "boolean" })
   success: boolean;
 
-  @Column({ type: "enum", enum: ["password", "guest", "session"] })
+  @Column({ type: "enum", enum: ["password", "guest", "session", "service"] })
   method: LoginMethod;
 
   @Column({ type: "varchar", length: 45 })
