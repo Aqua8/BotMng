@@ -7,6 +7,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AccessLogModule } from "../access-log/access-log.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
+import { LoginLockout } from "./login-lockout";
 import { JwtStrategy } from "./jwt.strategy";
 import { User } from "./user.entity";
 
@@ -22,6 +23,6 @@ import { User } from "./user.entity";
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, { provide: LoginLockout, useFactory: () => new LoginLockout() }], // 서버 하나에 하나(메모리)
 })
 export class AuthModule {}
