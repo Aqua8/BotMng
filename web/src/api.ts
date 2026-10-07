@@ -36,7 +36,7 @@ export interface AccessLogEntry {
   loggedAt: string;
   username: string | null; // 게스트에게는 실패한 시도의 아이디가 null
   success: boolean;
-  method: "password" | "guest" | "session"; // session = 저장된 로그인으로 다시 접속
+  method: "password" | "guest" | "session" | "service"; // session = 저장된 로그인으로 다시 접속, service = 서비스 계정 (관리자에게만 보임)
   ip: string; // 게스트에게는 마지막 부분이 마스킹됨
   country: string | null;
   os: string;
@@ -47,7 +47,7 @@ export interface AccessLogEntry {
 
 export interface AccessLogFilter {
   success?: boolean;
-  method?: "password" | "guest" | "session";
+  method?: "password" | "guest" | "session" | "service";
   from?: string; // ISO, 이 시각 이후
   to?: string; // ISO, 이 시각 이전
 }

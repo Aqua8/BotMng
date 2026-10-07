@@ -9,7 +9,7 @@ import { PageHead } from "./components/PageHead";
 import { DEFAULT_SORT, nextSort, useTableQuery } from "./hooks/useTableQuery";
 import { useState } from "react";
 
-const METHOD: Record<string, string> = { password: "비밀번호", guest: "게스트 버튼", session: "저장된 로그인" };
+const METHOD: Record<string, string> = { password: "비밀번호", guest: "게스트 버튼", session: "저장된 로그인", service: "서비스 계정" };
 const toIso = (local: string) => (local ? new Date(`${local}:00+09:00`).toISOString() : undefined); // 입력값은 KST로 해석
 const DEVICE: Record<string, string> = { desktop: "PC", mobile: "모바일", tablet: "태블릿", tv: "TV", unknown: "알 수 없음" };
 
@@ -55,7 +55,7 @@ export function AccessLogs() {
 
       <Flex wrap="wrap" align="center" gap="2" mb="3">
         <FilterSelect label="결과" allLabel="전체 결과" value={success} onChange={setSuccess} options={[{ value: "true", label: "성공" }, { value: "false", label: "실패" }]} />
-        <FilterSelect label="방식" allLabel="전체 방식" value={method} onChange={setMethod} options={[{ value: "password", label: "아이디/비밀번호" }, { value: "guest", label: "게스트 버튼" }, { value: "session", label: "저장된 로그인" }]} />
+        <FilterSelect label="방식" allLabel="전체 방식" value={method} onChange={setMethod} options={[{ value: "password", label: "아이디/비밀번호" }, { value: "guest", label: "게스트 버튼" }, { value: "session", label: "저장된 로그인" }, ...(isAdmin ? [{ value: "service", label: "서비스 계정" }] : [])]} />
         <Button variant="soft" color="gray" onClick={tq.reload} disabled={tq.loading}>
           새로고침
         </Button>

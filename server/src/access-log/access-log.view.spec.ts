@@ -1,4 +1,4 @@
-import { AccessLogRow, allowedAccessSorts, toView } from "./access-log.view";
+import { AccessLogRow, allowedAccessSorts, hiddenMethods, toView } from "./access-log.view";
 
 const log = (over: Partial<AccessLogRow> = {}): AccessLogRow => ({
     id: 1,
@@ -61,5 +61,15 @@ describe("allowedAccessSorts (게스트의 정렬 제한)", () => {
     expect(guest).not.toContain("ip");
     expect(guest).not.toContain("username");
     for (const col of ["loggedAt", "success", "method", "country", "os", "browser", "device"]) expect(guest).toContain(col);
+  });
+});
+
+describe("hiddenMethods (서비스 계정 접속 기록 숨김)", () => {
+  it("관리자에게는 아무것도 숨기지 않는다", () => {
+    expect(hiddenMethods("admin")).toEqual([]);
+  });
+
+  it("게스트에게는 서비스 계정의 접속 기록을 숨긴다", () => {
+    expect(hiddenMethods("guest")).toEqual(["service"]);
   });
 });

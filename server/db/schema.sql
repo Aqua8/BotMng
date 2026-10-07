@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
   id           INT          NOT NULL AUTO_INCREMENT COMMENT '계정 고유 번호',
   username     VARCHAR(64)  NOT NULL COMMENT '로그인 아이디 (admin, guest)',
   passwordHash VARCHAR(100) NOT NULL COMMENT '비밀번호 bcrypt 해시 (원문은 저장하지 않음)',
-  role         ENUM('admin','guest') NOT NULL COMMENT '권한 (admin=관리자, guest=읽기 전용)',
+  role         ENUM('admin','guest','service') NOT NULL COMMENT '권한 (admin=관리자, guest=읽기 전용, service=외부 서비스 전용: 화면 로그인 불가, /api/health 만 조회)',
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS access_logs (
   loggedAt  DATETIME(3)  NOT NULL COMMENT '로그인 시도 시각, 한국 시간(KST)',
   username  VARCHAR(64)  NOT NULL COMMENT '로그인 화면에 입력한 아이디 (게스트 버튼은 guest)',
   success   TINYINT(1)   NOT NULL COMMENT '로그인 성공 여부 (1=성공, 0=실패)',
-  method    ENUM('password','guest','session') NOT NULL COMMENT '로그인 방식 (password=아이디/비밀번호, guest=게스트 버튼, session=저장된 로그인으로 다시 접속)',
+  method    ENUM('password','guest','session','service') NOT NULL COMMENT '로그인 방식 (password=아이디/비밀번호, guest=게스트 버튼, session=저장된 로그인으로 다시 접속, service=외부 서비스 계정의 토큰 발급, 관리자에게만 보임)',
   ip        VARCHAR(45)  NOT NULL COMMENT '접속자 IP (Cloudflare 뒤 실제 접속자 IP, IPv6 포함 최대 45자)',
   country   VARCHAR(2)   NULL     COMMENT '접속자 국가 코드 (CF-IPCountry, 알 수 없으면 NULL)',
   os        VARCHAR(64)  NOT NULL COMMENT '운영체제 (User-Agent 해석 결과)',

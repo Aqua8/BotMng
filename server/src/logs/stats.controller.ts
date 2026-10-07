@@ -94,7 +94,7 @@ export class StatsController {
     const rows = await this.accessRepo
       .createQueryBuilder("a")
       .select(["a.success", "a.method", "a.ip", "a.country"])
-      .where("a.loggedAt >= :since", { since })
+      .where("a.loggedAt >= :since AND a.method <> 'service'", { since }) // 서비스 계정은 사람의 접속이 아니므로 요약에서 뺀다
       .getMany();
     return { days: query.days, ...aggregateAccessStats(rows) };
   }
