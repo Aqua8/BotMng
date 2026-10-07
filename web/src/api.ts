@@ -156,7 +156,7 @@ export async function login(username: string, password: string): Promise<Session
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  if (!res.ok) throw new Error(res.status === 401 ? "아이디 또는 비밀번호가 올바르지 않습니다" : `로그인 실패 (${res.status})`);
+  if (!res.ok) throw new Error(res.status === 401 ? "아이디 또는 비밀번호가 올바르지 않습니다" : res.status === 429 ? "시도가 너무 많습니다. 잠시 후 다시 시도해 주세요" : `로그인 실패 (${res.status})`);
   return res.json();
 }
 

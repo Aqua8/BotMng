@@ -1,4 +1,5 @@
 import { BlockList } from "node:net";
+import { normalizeIp } from "@nestjs/throttler/dist/ip"; // 순수 함수만 있는 파일이라 Jest 에서도 불러올 수 있다
 
 // https://www.cloudflare.com/ips-v4 , https://www.cloudflare.com/ips-v6 (2026-10 기준). 바뀌면 여기를 갱신한다.
 const CLOUDFLARE_V4 = [
@@ -37,4 +38,13 @@ export function clientCountry(req: { ip?: string; headers?: Record<string, strin
   const raw = req.headers?.["cf-ipcountry"];
   const value = (Array.isArray(raw) ? raw[0] : raw)?.toUpperCase();
   return value && /^[A-Z]{2}$/.test(value) && req.ip && fromCloudflare(req.ip) ? value : null;
+}
+
+/**
+ * 횟수 제한에 쓰는 접속자 키. 실제 접속자 IP 를 쓰되 IPv6 는 /64 단위로 묶는다.
+ * (IPv6 는 한 접속자가 같은 /64 안의 주소를 마음대로 바꿔 쓸 수 있어서, 주소 하나씩 세면 제한을 피할 수 있다.)
+ * ThrottlerGuard 의 기본 추적기는 이렇게 묶지만, 여기서는 Cloudflare 뒤의 실제 IP 를 쓰려고 추적기를 직접 구현하므로 따로 적용한다.
+ */
+export function throttleKey(req: { ip?: string; headers?: Record<string, string | string[] | undefined> }): string {
+  return normalizeIp(clientIp(req), 64);
 }
