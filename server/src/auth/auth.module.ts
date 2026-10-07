@@ -9,6 +9,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { LoginLockout } from "./login-lockout";
 import { JwtStrategy } from "./jwt.strategy";
+import { JWT_ALGORITHM } from "./token-user";
 import { User } from "./user.entity";
 
 @Module({
@@ -19,7 +20,7 @@ import { User } from "./user.entity";
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]), // 로그인: IP당 분당 10회
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (c: ConfigService) => ({ secret: c.getOrThrow("JWT_SECRET"), signOptions: { expiresIn: "12h" } }),
+      useFactory: (c: ConfigService) => ({ secret: c.getOrThrow("JWT_SECRET"), signOptions: { expiresIn: "12h", algorithm: JWT_ALGORITHM }, verifyOptions: { algorithms: [JWT_ALGORITHM] } }),
     }),
   ],
   controllers: [AuthController],

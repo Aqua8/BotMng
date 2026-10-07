@@ -4,6 +4,7 @@ import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { compare, hash } from "bcryptjs";
 import { Repository } from "typeorm";
+import { checkPassword } from "./password-check";
 import { checkSeedPasswords, passwordPolicyMessage } from "./password-policy";
 import { Role, User } from "./user.entity";
 
@@ -49,16 +50,19 @@ export class AuthService implements OnApplicationBootstrap {
   async login(username: string, password: string) {
     const user = await this.users.findOneBy({ username });
     // 서비스 계정은 화면(아이디/비밀번호) 로그인을 막는다. 틀린 비밀번호와 같은 메시지로 응답해 계정 존재를 알리지 않는다.
-    if (!user || user.role === "service" || !(await compare(password, user.passwordHash))) {
+    const usable = user && user.role !== "service" ? user : null;
+    const matches = await checkPassword(usable?.passwordHash, password); // 계정이 없어도 비교를 한다(응답 시간으로 계정 존재를 알 수 없게)
+    if (!usable || !matches) {
       throw new UnauthorizedException("아이디 또는 비밀번호가 올바르지 않습니다");
     }
-    return this.issue(user);
+    return this.issue(usable);
   }
 
   /** 서비스 계정 전용 토큰 발급. 비밀번호만 받고, 토큰은 짧게(15분) 유효하다. */
   async loginAsService(password: string) {
     const user = await this.users.findOneBy({ username: SERVICE_USERNAME, role: "service" });
-    if (!user || !(await compare(password, user.passwordHash))) {
+    const matches = await checkPassword(user?.passwordHash, password);
+    if (!user || !matches) {
       throw new UnauthorizedException("서비스 계정 인증에 실패했습니다");
     }
     return this.issue(user, SERVICE_TOKEN_TTL);

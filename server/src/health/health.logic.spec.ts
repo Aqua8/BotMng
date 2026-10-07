@@ -1,4 +1,5 @@
-import { SourceStatus, describeCollectorError, evaluateHealth, lagBytes } from "./health.logic";
+import { In, Not } from "typeorm";
+import { SourceStatus, accessLogFilter, describeCollectorError, evaluateHealth, lagBytes } from "./health.logic";
 
 const NOW = new Date("2026-10-07T00:30:00Z");
 const ago = (ms: number) => new Date(NOW.getTime() - ms);
@@ -82,5 +83,17 @@ describe("evaluateHealth", () => {
     const r = evaluateHealth({ db: dbDown, sources: [source({ lagBytes: 999_999 })] }, NOW);
     expect(r.status).toBe("error");
     expect(r.issues.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("accessLogFilter (accessLogCount 에서 서비스 접속 빼기)", () => {
+  it("관리자는 모두 센다", () => {
+    expect(accessLogFilter("admin")).toEqual({});
+  });
+
+  it("게스트와 서비스 계정은 서비스 접속 행을 뺀다 (접속 요약 패널과 같은 기준)", () => {
+    for (const role of ["guest", "service"] as const) {
+      expect(accessLogFilter(role)).toEqual({ method: Not(In(["service"])) });
+    }
   });
 });
