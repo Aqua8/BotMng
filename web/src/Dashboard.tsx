@@ -23,14 +23,16 @@ export function Dashboard() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const load = () =>
-      Promise.all([fetchStats(), fetchLogs({ level: "error" }, { page: 1, pageSize: 20 }), fetchLogs({ level: "warn" }, { page: 1, pageSize: 20 })])
+    const load = () => {
+      const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      return Promise.all([fetchStats(), fetchLogs({ level: "error", from }, { page: 1, pageSize: 20 }), fetchLogs({ level: "warn", from }, { page: 1, pageSize: 20 })])
         .then(([s, errs, warns]) => {
           setStats(s);
           setAlerts([...errs.items, ...warns.items].sort((a, b) => b.id - a.id).slice(0, 5));
           setError("");
         })
         .catch((e: Error) => setError(e.message));
+    };
     void load();
     const t = setInterval(load, REFRESH_MS);
     return () => clearInterval(t);
@@ -101,9 +103,9 @@ export function Dashboard() {
           )}
         </Panel>
 
-        <Panel title="최근 경고와 에러">
+        <Panel title="최근 경고와 에러" aside="최근 24시간">
           {alerts.length === 0 ? (
-            <p className="empty">경고나 에러가 없습니다.</p>
+            <p className="empty">최근 24시간 동안 경고나 에러가 없습니다.</p>
           ) : (
             <div className="alerts">
               {alerts.map((a) => (
