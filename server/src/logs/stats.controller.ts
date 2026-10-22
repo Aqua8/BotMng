@@ -2,7 +2,7 @@ import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Type } from "class-transformer";
 import { IsIn, IsOptional } from "class-validator";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AccessLog } from "../access-log/access-log.entity";
 import { aggregateAccessStats } from "../access-log/access-stats";
@@ -13,6 +13,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const KST_OFFSET_MS = 9 * HOUR_MS; // DB가 KST로 저장되므로 시간 버킷도 KST 기준
 const LEVELS = ["info", "warn", "error"] as const;
+const ALERT_COUNT = 5; // 대시보드 "최근 경고와 에러"에 보여줄 건수
 
 class CommandStatsQuery {
   @IsOptional() @Type(() => Number) @IsIn([1, 7, 30]) days: number = 7;
@@ -32,8 +33,7 @@ export class StatsController {
     const since24h = new Date(now - DAY_MS);
     const since7d = new Date(now - 7 * DAY_MS);
 
-    const [total, last24h, errors7d, byTag, hourlyRows, latest, lastStart] = await Promise.all([
-      this.repo.count(),
+    const [last24h, errors7d, byTag, hourlyRows, latest, lastStart, recentAlerts] = await Promise.all([
       this.countByLevel(since24h),
       this.errorCountSince(since7d),
       this.repo
@@ -53,22 +53,24 @@ export class StatsController {
         .groupBy("hour")
         .addGroupBy("l.level")
         .getRawMany<{ hour: string; level: (typeof LEVELS)[number]; count: string }>(),
-      this.repo.findOne({ where: {}, order: { id: "DESC" } }),
+      this.repo.findOne({ where: {}, order: { id: "DESC" }, select: { loggedAt: true } }),
       this.repo
         .createQueryBuilder("l")
+        .select("l.loggedAt")
         .where("l.tag = 'scheduler' AND l.message LIKE '%시작됨%'")
         .orderBy("l.id", "DESC")
         .getOne(),
+      this.repo.find({ where: { level: In(["warn", "error"]) }, order: { id: "DESC" }, take: ALERT_COUNT }),
     ]);
 
     return {
-      total,
       last24h,
       errors7d,
       lastLogAt: latest?.loggedAt ?? null,
       lastStartAt: lastStart?.loggedAt ?? null,
       byTag: byTag.map((r) => ({ tag: r.tag, count: Number(r.count) })),
       hourly: this.fillHours(now, hourlyRows),
+      recentAlerts,
     };
   }
 

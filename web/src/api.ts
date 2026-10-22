@@ -22,13 +22,13 @@ export interface LogFilter {
 }
 
 export interface Stats {
-  total: number;
   last24h: Record<Level, number>;
   errors7d: number;
   lastLogAt: string | null;
   lastStartAt: string | null;
   byTag: { tag: string; count: number }[];
   hourly: { hour: string; info: number; warn: number; error: number }[];
+  recentAlerts: LogEntry[];
 }
 
 export interface AccessLogEntry {

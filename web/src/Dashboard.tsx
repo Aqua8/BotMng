@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogEntry, Stats, fetchLogs, fetchStats, formatClock, formatDay } from "./api";
+import { Stats, fetchStats, formatClock, formatDay } from "./api";
 import { AccessStatsPanel } from "./AccessStatsPanel";
 import { CommandStatsPanel } from "./CommandStatsPanel";
 import { HealthPanel } from "./HealthPanel";
@@ -19,15 +19,13 @@ const SCHEDULE: { hour: number; weekday?: number; label: string }[] = [
 
 export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [alerts, setAlerts] = useState<LogEntry[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const load = () =>
-      Promise.all([fetchStats(), fetchLogs({ level: "error" }, { page: 1, pageSize: 20 }), fetchLogs({ level: "warn" }, { page: 1, pageSize: 20 })])
-        .then(([s, errs, warns]) => {
+      fetchStats()
+        .then((s) => {
           setStats(s);
-          setAlerts([...errs.items, ...warns.items].sort((a, b) => b.id - a.id).slice(0, 5));
           setError("");
         })
         .catch((e: Error) => setError(e.message));
@@ -102,11 +100,11 @@ export function Dashboard() {
         </Panel>
 
         <Panel title="최근 경고와 에러" aside="최근 5건">
-          {alerts.length === 0 ? (
+          {stats.recentAlerts.length === 0 ? (
             <p className="empty">경고나 에러가 없습니다.</p>
           ) : (
             <div className="alerts">
-              {alerts.map((a) => (
+              {stats.recentAlerts.map((a) => (
                 <div className={`alert ${a.level}`} key={a.id}>
                   <span className="bar" />
                   <div>
