@@ -101,7 +101,7 @@ export function Dashboard() {
           )}
         </Panel>
 
-        <Panel title="최근 경고와 에러">
+        <Panel title="최근 경고와 에러" aside="최근 5건">
           {alerts.length === 0 ? (
             <p className="empty">경고나 에러가 없습니다.</p>
           ) : (
