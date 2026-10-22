@@ -29,6 +29,7 @@ export interface Stats {
   lastStartAt: string | null;
   byTag: { tag: string; count: number }[];
   hourly: { hour: string; info: number; warn: number; error: number }[];
+  recentAlerts: LogEntry[];
 }
 
 export interface AccessLogEntry {
