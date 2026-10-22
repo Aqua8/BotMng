@@ -33,8 +33,7 @@ export class StatsController {
     const since24h = new Date(now - DAY_MS);
     const since7d = new Date(now - 7 * DAY_MS);
 
-    const [total, last24h, errors7d, byTag, hourlyRows, latest, lastStart, recentAlerts] = await Promise.all([
-      this.repo.count(),
+    const [last24h, errors7d, byTag, hourlyRows, latest, lastStart, recentAlerts] = await Promise.all([
       this.countByLevel(since24h),
       this.errorCountSince(since7d),
       this.repo
@@ -54,9 +53,10 @@ export class StatsController {
         .groupBy("hour")
         .addGroupBy("l.level")
         .getRawMany<{ hour: string; level: (typeof LEVELS)[number]; count: string }>(),
-      this.repo.findOne({ where: {}, order: { id: "DESC" } }),
+      this.repo.findOne({ where: {}, order: { id: "DESC" }, select: { loggedAt: true } }),
       this.repo
         .createQueryBuilder("l")
+        .select("l.loggedAt")
         .where("l.tag = 'scheduler' AND l.message LIKE '%시작됨%'")
         .orderBy("l.id", "DESC")
         .getOne(),
@@ -64,7 +64,6 @@ export class StatsController {
     ]);
 
     return {
-      total,
       last24h,
       errors7d,
       lastLogAt: latest?.loggedAt ?? null,

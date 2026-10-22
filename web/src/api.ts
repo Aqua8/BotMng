@@ -22,7 +22,6 @@ export interface LogFilter {
 }
 
 export interface Stats {
-  total: number;
   last24h: Record<Level, number>;
   errors7d: number;
   lastLogAt: string | null;
